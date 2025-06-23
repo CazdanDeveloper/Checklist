@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Implementation App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #015046;
+            --primary-color-light: #027a6a;
+            --primary-color-focus-ring: rgba(1, 80, 70, 0.3);
+            --secondary-color: #9BD5DC;
+            --glass-bg: rgba(255, 255, 255, 0.55);
+            --glass-border: rgba(255, 255, 255, 0.7);
+            --glass-input-bg: rgba(255, 255, 255, 0.4);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #e8f1f0;
+        }
+
+        .glass-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+            border-radius: 1rem;
+        }
+        
+        .form-input:focus {
+            border-color: var(--primary-color) !important;
+            box-shadow: 0 0 0 3px var(--primary-color-focus-ring) !important;
+            outline: none !important;
+        }
+        
+        .nav-link.active {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        .nav-link.active:hover {
+            background-color: var(--primary-color);
+        }
+        
+        .modal-overlay {
+            background-color: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <div class="flex h-screen">
+        <!-- Sidebar Navigation -->
+        <aside class="w-64 p-4 flex-shrink-0">
+            <nav id="sidebar-nav" class="glass-card h-full p-4 flex flex-col">
+                <div class="text-center mb-10">
+                    <h2 class="text-2xl font-bold" style="color: var(--primary-color);">CCH Group</h2>
+                </div>
+                <ul class="space-y-2">
+                    <li><a href="#" class="nav-link flex items-center p-3 rounded-lg text-gray-700 hover:bg-white/50 transition-colors duration-200" onclick="showPage('dashboard')"><i class="fas fa-tachometer-alt w-6 mr-3"></i> Dashboard</a></li>
+                    <li><a href="#" class="nav-link flex items-center p-3 rounded-lg text-gray-700 hover:bg-white/50 transition-colors duration-200" onclick="showPage('kick-off-call')"><i class="fas fa-rocket w-6 mr-3"></i> Kick Off Call</a></li>
+                    <li><a href="#" class="nav-link flex items-center p-3 rounded-lg text-gray-700 hover:bg-white/50 transition-colors duration-200" onclick="showPage('update-call')"><i class="fas fa-sync-alt w-6 mr-3"></i> Update Call</a></li>
+                    <li><a href="#" class="nav-link flex items-center p-3 rounded-lg text-gray-700 hover:bg-white/50 transition-colors duration-200" onclick="showPage('rates-overview')"><i class="fas fa-file-pen w-6 mr-3"></i> Rates Overview</a></li>
+                    <li><a href="#" class="nav-link flex items-center p-3 rounded-lg text-gray-700 hover:bg-white/50 transition-colors duration-200" onclick="showPage('checklist')"><i class="fas fa-tasks w-6 mr-3"></i> Checklist</a></li>
+                </ul>
+            </nav>
+        </aside>
+
+        <!-- Main Content Area -->
+        <div id="main-content-area" class="flex-1 p-4 md:p-8 overflow-y-auto">
+            <!-- Pages will be rendered here -->
+        </div>
+    </div>
+    
+    <button id="add-section-btn" onclick="openAddSectionModal()" class="hidden fixed bottom-8 right-8 text-black w-16 h-16 rounded-full shadow-lg flex items-center justify-center text-3xl hover:opacity-90 transition-opacity" style="background-color: var(--secondary-color);">
+        <i class="fas fa-plus"></i>
+    </button>
+    
+    <div id="modal-container"></div>
+
+    <script>
+        // =================================================================================
+        // GLOBAL STATE & PAGE TEMPLATES
+        // =================================================================================
+        let appState = {
+            projectName: 'Cityville'
+        };
+
+        const pageTemplates = {
+            dashboard: `<header class="glass-card p-6 mb-8"><h1 class="text-3xl font-bold text-slate-800">Dashboard</h1><p class="text-lg text-gray-700 mt-1">This page is under construction.</p></header>`,
+            'kick-off-call': `
+                <header class="glass-card p-6 mb-8 flex items-center justify-between">
+                    <div><h1 class="text-3xl font-bold text-slate-800">Kick Off Call</h1><p class="text-lg text-gray-700 mt-1">Key discussion points for the initial project kick-off.</p></div>
+                    <div class="text-6xl opacity-20" style="color: var(--primary-color);"><i class="fas fa-rocket"></i></div>
+                </header>
+                <main id="kick-off-main">
+                    <section class="glass-card p-6 mb-6">
+                        <div class="flex justify-between items-center mb-4"><h2 class="text-2xl font-semibold text-slate-700">Information Gather</h2></div>
+                        <div id="agenda-list" class="space-y-4"></div>
+                    </section>
+                </main>`,
+            'update-call': `
+                <header class="glass-card p-6 mb-8 flex items-center justify-between">
+                    <div><h1 class="text-3xl font-bold text-slate-800">Update Call</h1><p class="text-lg text-gray-700 mt-1">Weekly progress and action tracking.</p></div>
+                    <div class="text-6xl opacity-20" style="color: var(--primary-color);"><i class="fas fa-sync-alt"></i></div>
+                </header>
+                <main id="update-call-main"></main>
+                `,
+            'rates-overview': `<header class="glass-card p-6 mb-8"><h1 class="text-3xl font-bold text-slate-800">Rates Overview</h1><p class="text-lg text-gray-700 mt-1">This page is under construction.</p></header>`,
+            checklist: (projectName) => `
+                <header class="glass-card p-6 mb-8">
+                    <div class="flex flex-col sm:flex-row justify-between sm:items-center">
+                        <div class="mb-4 sm:mb-0"><h1 class="text-3xl font-bold text-slate-800">${projectName} Implementation</h1><p class="text-lg text-gray-700">OpCo: Sunshine Care Homes</p></div>
+                        <div class="text-left sm:text-right"><p class="text-sm font-medium text-gray-600">Go-Live Date</p><p class="text-xl font-semibold" style="color: var(--primary-color);">21/12/2025</p></div>
+                    </div>
+                    <div class="mt-4"><p class="text-sm font-medium text-gray-600 mb-1">Overall Progress</p><div class="w-full bg-gray-200/50 rounded-full h-4 border border-gray-300/50"><div id="progress-bar" class="h-4 rounded-full transition-all duration-500" style="width: 0%; background-color: var(--primary-color);"></div></div><p id="progress-text" class="text-right text-sm mt-1 text-gray-600">0% Complete</p></div>
+                </header>
+                <main id="checklist-main"></main>`
+        };
+
+        // =================================================================================
+        // ROUTING AND PAGE DISPLAY LOGIC
+        // =================================================================================
+        function showPage(pageId) {
+            const mainContentArea = document.getElementById('main-content-area');
+            const addSectionBtn = document.getElementById('add-section-btn');
+            let template = pageTemplates[pageId];
+            mainContentArea.innerHTML = typeof template === 'function' ? template(appState.projectName) : template || `<p>Page not found</p>`;
+            document.querySelectorAll('#sidebar-nav .nav-link').forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('onclick').includes(`'${pageId}'`)) link.classList.add('active');
+            });
+
+            addSectionBtn.classList.add('hidden'); // Hide by default
+            if (pageId === 'checklist') { addSectionBtn.classList.remove('hidden'); checklistApp.render(); } 
+            if (pageId === 'kick-off-call') { agendaApp.render(); }
+            if (pageId === 'update-call') { updateCallApp.render(); }
+        }
+
+        // =================================================================================
+        // CHECKLIST APP LOGIC
+        // =================================================================================
+        const checklistApp = {
+            responsibleTitles: [ 'Implementation Support Officer', 'Lead Implementation Support Officer', 'Head of Implementation', 'Branch Manager', 'Area Manager', 'Regional Manager', 'Regional Director', 'Operations Director', 'Recruitment', 'Finance Business Partner', 'Commercial Rates Team', 'Head of Quality', 'HR Business Partner', 'Estates', 'IT Estates', 'Payroll', 'Accounts Receivable Manager', 'Commercial Lead', 'Legal', 'Regional Training Manager', 'Head of Market Intelligence' ],
+            state: { currentDate: new Date('2025-06-21T12:00:00Z'), sections: [ { id: `s_${Date.now()}_1`, title: 'Pre-Implementation', status: 'On Track', isCollapsed: false, filter: '' }, { id: `s_${Date.now()}_2`, title: 'Go Live', status: 'Not Started', isCollapsed: true, filter: '' } ], tasks: [ { id: `t_${Date.now()}_1`, sectionId: `s_${Date.now()}_1`, description: 'Review security protocols', responsible: 'Jane Doe', dueDate: '2025-06-20', status: 'Not Started', notes: 'This is now overdue.' }, { id: `t_${Date.now()}_2`, sectionId: `s_${Date.now()}_1`, description: 'Onboard new staff', responsible: 'John Smith', dueDate: '2025-07-10', status: 'On Track', notes: '' }, { id: `t_${Date.now()}_3`, sectionId: `s_${Date.now()}_1`, description: 'Plan Q3 kick-off', responsible: 'Peter Jones', dueDate: '2025-08-01', status: 'Not Started', notes: '' }, { id: `t_${Date.now()}_4`, sectionId: `s_${Date.now()}_2`, description: 'Submit budget draft', responsible: 'Jane Doe', dueDate: '2025-06-15', status: 'Completed', notes: 'Approved by finance.' }, { id: `t_${Date.now()}_5`, sectionId: `s_${Date.now()}_2`, description: 'Migrate legacy data', responsible: 'John Smith', dueDate: '2025-07-01', status: 'N/A', notes: 'Client has no legacy data.' } ]},
+            render() { const mainContent = document.getElementById('checklist-main'); if (!mainContent) return; mainContent.innerHTML = ''; this.state.sections.forEach(section => { const sectionEl = document.createElement('section'); sectionEl.id = section.id; sectionEl.className = 'glass-card p-6 mb-6'; const tasksForSection = this.state.tasks.filter(t => t.sectionId === section.id); const filteredTasks = section.filter ? tasksForSection.filter(t => t.responsible.toLowerCase().includes(section.filter.toLowerCase())) : tasksForSection; sectionEl.innerHTML = this.createSectionHTML(section, filteredTasks); mainContent.appendChild(sectionEl); }); this.updateProgressBar(); },
+            createSectionHTML(section, filteredTasks) { return `<div class="flex justify-between items-center cursor-pointer" onclick="checklistApp.toggleSection('${section.id}')"><h2 class="text-2xl font-semibold text-slate-700">${section.title}</h2><div class="flex items-center space-x-4"><span class="text-sm font-medium text-gray-600">Status: ${section.status}</span>${this.getSectionStatusIcon(section.status)}<i onclick="event.stopPropagation(); openConfirmModal('deleteSection', '${section.id}', 'this section')" class="fas fa-trash-alt text-gray-400 hover:text-red-500 transition-colors"></i><i id="icon-${section.id}" class="fas fa-chevron-down text-xl text-gray-600 transition-transform duration-300 ${section.isCollapsed ? 'rotate-180' : ''}"></i></div></div><div id="content-${section.id}" class="collapsible-content mt-4 ${section.isCollapsed ? 'hidden' : ''}">${this.createTableHTML(filteredTasks, section.id)}<div class="mt-4 flex justify-between items-center"><div class="w-1/3">${this.createSectionProgressHTML(filteredTasks)}</div><button onclick="openAddTaskModal('${section.id}')" class="font-bold py-2 px-5 rounded-lg shadow-md text-white transition-all duration-300 hover:opacity-90" style="background-color: var(--primary-color);"><i class="fas fa-plus mr-2"></i>Add New Task</button></div></div>`; },
+            createTableHTML(tasks, sectionId) { if (tasks.length === 0) return '<p class="text-gray-600 text-center py-8">No tasks have been added to this section yet.</p>'; let rowsHTML = tasks.map(task => { const rag = this.getRagStatus(task); const isCompleted = task.status === 'Completed' || task.status === 'N/A'; return `<tr id="${task.id}" class="hover:bg-white/30"><td class="px-6 py-4 text-sm font-medium text-gray-800 ${isCompleted ? 'line-through text-gray-500' : ''}">${task.description}</td><td class="px-6 py-4 text-sm">${task.responsible}</td><td class="px-6 py-4 text-sm">${this.formatDateToUK(task.dueDate)}</td><td class="px-6 py-4 text-sm"><select onchange="checklistApp.updateTaskStatus('${task.id}', this.value)" class="status-dropdown rounded-md border-gray-300/70 shadow-sm w-full form-input glass-input"><option value="Not Started" ${task.status === 'Not Started' ? 'selected' : ''}>Not Started</option><option value="On Track" ${task.status === 'On Track' ? 'selected' : ''}>On Track</option><option value="Completed" ${task.status === 'Completed' ? 'selected' : ''}>Completed</option><option value="N/A" ${task.status === 'N/A' ? 'selected' : ''}>N/A</option></select></td><td class="px-6 py-4 text-center"><span class="h-4 w-4 rounded-full inline-block ${rag.css}"></span></td><td class="px-6 py-4 text-sm"><input onchange="checklistApp.updateTaskNotes('${task.id}', this.value)" type="text" class="w-full rounded-md border-gray-300/70 shadow-sm form-input glass-input" value="${task.notes}"></td><td class="px-6 py-4 text-center"><i onclick="openConfirmModal('deleteTask', '${task.id}', 'this task')" class="fas fa-trash-alt text-gray-400 hover:text-red-500 cursor-pointer transition-colors"></i></td></tr>`; }).join(''); return `<div class="overflow-x-auto mb-4"><table class="min-w-full divide-y divide-gray-200/50 table-fixed-layout"><thead class="bg-transparent"><tr><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-2/5"><span class="flex items-center">Task Description <i onclick="checklistApp.sortTasks('${sectionId}', 'description')" class="fas fa-sort ml-2 cursor-pointer"></i></span></th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6"><span class="flex items-center">Responsible <i onclick="checklistApp.sortTasks('${sectionId}', 'responsible')" class="fas fa-sort ml-2 cursor-pointer"></i> <i onclick="checklistApp.filterTasks('${sectionId}')" class="fas fa-filter ml-2 cursor-pointer"></i></span></th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6"><span class="flex items-center">Due Date <i onclick="checklistApp.sortTasks('${sectionId}', 'dueDate')" class="fas fa-sort ml-2 cursor-pointer"></i></span></th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">Status</th><th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">RAG</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/5">Notes</th><th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider"></th></tr></thead><tbody class="divide-y divide-gray-200/50">${rowsHTML}</tbody></table></div>`; },
+            addTask(sectionId, formData) { this.state.tasks.push({ id: `t_${Date.now()}`, sectionId, description: formData.get('description'), responsible: formData.get('responsible'), dueDate: formData.get('dueDate'), status: 'Not Started', notes: '' }); this.updateSectionStatus(sectionId); this.render(); },
+            deleteTask(taskId) { const task = this.state.tasks.find(t => t.id === taskId); if(task) { const sectionId = task.sectionId; this.state.tasks = this.state.tasks.filter(t => t.id !== taskId); this.updateSectionStatus(sectionId); this.render(); }},
+            updateTaskStatus(taskId, newStatus) { const task = this.state.tasks.find(t => t.id === taskId); if(task) { task.status = newStatus; this.updateSectionStatus(task.sectionId); } this.render(); },
+            updateTaskNotes(taskId, newNotes) { const task = this.state.tasks.find(t => t.id === taskId); if(task) task.notes = newNotes; },
+            addSection(title) { if(!title) return; this.state.sections.push({ id: `s_${Date.now()}`, title, status: 'Not Started', isCollapsed: false, filter: '' }); this.render(); },
+            deleteSection(sectionId) { this.state.sections = this.state.sections.filter(s => s.id !== sectionId); this.state.tasks = this.state.tasks.filter(t => t.sectionId !== sectionId); this.render(); },
+            toggleSection(sectionId) { const section = this.state.sections.find(s => s.id === sectionId); if(section) section.isCollapsed = !section.isCollapsed; this.render(); },
+            sortTasks(sectionId, key) { const tasksToSort = this.state.tasks.filter(t => t.sectionId === sectionId); tasksToSort.sort((a,b) => a[key].localeCompare(b[key])); const otherTasks = this.state.tasks.filter(t => t.sectionId !== sectionId); this.state.tasks = [...otherTasks, ...tasksToSort]; this.render(); },
+            filterTasks(sectionId) { const section = this.state.sections.find(s => s.id === sectionId); if(!section) return; const val = prompt('Filter by Responsible (leave blank to clear):', section.filter || ''); if(val !== null) { section.filter = val.trim(); this.render(); }},
+            updateSectionStatus(sectionId) { const section = this.state.sections.find(s => s.id === sectionId); if(!section) return; const tasks = this.state.tasks.filter(t => t.sectionId === sectionId); if(tasks.length === 0) { section.status = 'Not Started'; return; } if(tasks.every(t => t.status === 'Completed' || t.status === 'N/A')) { section.status = 'Completed'; return; } if(tasks.some(t => t.status !== 'Not Started')) { section.status = 'On Track'; return; } section.status = 'Not Started'; },
+            getSectionStatusIcon(status) { if(status === 'On Track') return `<i class="fas fa-spinner fa-spin text-lg" style="color: var(--primary-color-light);"></i>`; if(status === 'Completed') return `<i class="fas fa-check-circle text-lg text-green-500"></i>`; return `<i class="far fa-circle text-lg text-gray-400"></i>`; },
+            createSectionProgressHTML(tasks) { if(tasks.length === 0) return ''; const pTasks = tasks.filter(t => t.status === 'Completed' || t.status === 'N/A').length; const prog = Math.round((pTasks / tasks.length) * 100); return `<div><div class="w-full bg-gray-200/50 rounded-full h-2.5 border border-gray-300/50"><div class="bg-green-500 h-2.5 rounded-full" style="width: ${prog}%"></div></div><p class="text-xs text-gray-600 mt-1">Section Progress: ${prog}%</p></div>`; },
+            formatDateToUK(iso) { if(!iso) return ''; const [y,m,d] = iso.split('-'); return `${d}/${m}/${y}`; },
+            getRagStatus(task) { const due = new Date(task.dueDate); if(isNaN(due)) return {css: 'bg-gray-400'}; if(due < this.state.currentDate && task.status === 'Not Started') return {css: 'bg-red-500 rag-glow-red'}; switch(task.status) { case 'Completed': return {css: 'bg-green-500 rag-glow-green'}; case 'On Track': return {css: 'bg-amber-500 rag-glow-amber'}; case 'Not Started': return {css: 'rag-glassy'}; default: return {css: 'bg-gray-400'}; } },
+            updateProgressBar() { const pBar = document.getElementById('progress-bar'); const pText = document.getElementById('progress-text'); if(!pBar || !pText) return; const total = this.state.tasks.length; if(total === 0) { pBar.style.width = '0%'; pText.innerText = '0% Complete'; return; } const progTasks = this.state.tasks.filter(t => t.status === 'Completed' || t.status === 'N/A').length; const prog = Math.round((progTasks / total) * 100); pBar.style.width = `${prog}%`; pText.innerText = `${prog}% Complete`; }
+        };
+
+        // =================================================================================
+        // KICK-OFF CALL APP LOGIC
+        // =================================================================================
+        const kickOffGroups = [
+            ['Branch', 'Region', 'Branch Address', 'Attendees', 'Weekly Governance call', 'Taxonomy/MINT requested', 'Go Live Date', 'Implementation Duration (weeks)', 'Implementation Type', 'Outgoing Provider Name', 'C-Number'],
+            ['Volume of Hours', 'Service User (SS) Volumes', 'Service User (Private) Volumes', 'Care Professional Volumes', 'Operational staff Volumes'],
+            ['ELI document', 'Consultations with Staff - Ops & Care Professionals', 'TUPE Meetings with Care Professionals', 'Care Professional transferring out', 'Operational Staff transferring out', 'Service User transferring out'],
+            ['ECM Contractual requirement', 'Invoice rate and set up (any new invoice runs?)', 'Private Service Users', 'Pay rate and set up (any new payroll runs?)', 'Travel rate and set up', 'Shift and Waking night set up (including any breaks in shift)', 'On Call set up', 'Bespoke Pay/Invoice set up', 'Bespoke LA reports'],
+            ['1st Payroll Check Due Date', '1st Invoice Check Due Date', '2nd Payroll Check Due Date', '2nd Invoice Check Due Date'],
+            ['Estates order', 'IT Estates order (Thin Clients, Printer, Phones)', 'IT Equipment order (Devices, Tablets, Laptops)', 'ECS Connectivity'],
+            ['System Training (Remote/Onsite)', 'Care Professional Training', 'Quality Team informed', 'Recruitment requirements', 'Deliverables and Social Values']
+        ];
+        const allKickOffTitles = kickOffGroups.flat();
+        const agendaApp = {
+            state: { points: allKickOffTitles.map(title => ({ id: `p_${title.replace(/[\s/()]+/g, '')}`, title: title, value: '' })) },
+            render() { const agendaList = document.getElementById('agenda-list'); if (!agendaList) return; agendaList.innerHTML = ''; kickOffGroups.forEach((group, index) => { group.forEach(title => { const point = this.state.points.find(p => p.title === title); if(point) { const pointEl = document.createElement('div'); pointEl.id = point.id; pointEl.className = 'flex items-center'; pointEl.innerHTML = this.createPointHTML(point); agendaList.appendChild(pointEl); } }); if (index < kickOffGroups.length - 1) { const separatorEl = document.createElement('div'); separatorEl.className = 'flex items-center text-center py-4'; separatorEl.innerHTML = `<hr class="flex-1 border-gray-300/50"><div class="w-2 h-2 mx-2 bg-gray-300/50 transform rotate-45"></div><hr class="flex-1 border-gray-300/50">`; agendaList.appendChild(separatorEl); } }); },
+            createPointHTML(point) { const isDateField = point.title.toLowerCase().includes('date'); const inputType = isDateField ? 'date' : 'text'; const value = point.title === 'Branch' ? appState.projectName : point.value; return `<div class="flex-1"><label class="sr-only">${point.title}</label><div class="flex rounded-md shadow-sm items-stretch bg-gray-50/70 border border-gray-300/50"><span class="flex-1 flex items-center justify-end px-3 text-gray-700 sm:text-sm font-medium">${point.title}</span><div class="flex items-center px-2"><div class="w-px h-4" style="background-color: var(--primary-color);"></div></div><input type="${inputType}" onchange="agendaApp.updatePointValue('${point.id}', this.value)" value="${value}" class="form-input flex-[2] min-w-0 block w-full px-3 py-2 rounded-r-md sm:text-sm bg-transparent border-0"></div></div>`; },
+            updatePointValue(pointId, value) { const point = this.state.points.find(p => p.id === pointId); if(point) { point.value = value; if (point.title === 'Branch') { appState.projectName = value.trim() || 'Untitled'; } } }
+        };
+
+        // =================================================================================
+        // UPDATE CALL APP LOGIC
+        // =================================================================================
+        const updateCallAgenda = [
+            { agenda: 'Contract Summary', actions: ['Confirmation of Hours', 'Taxonomy'] },
+            { agenda: 'System Set Up', actions: ['MINT Request', 'System Access'] },
+            { agenda: 'Migration/Service Delivery', actions: ['Care Professional Migration', 'Service User Migration'] },
+            { agenda: 'Finance Setup', actions: ['Commercial Overview'] },
+            { agenda: 'Quality', actions: [] }, { agenda: 'Rates', actions: [] }, { agenda: 'TUPE Info', actions: [] },
+            { agenda: 'Systems / Phone Training', actions: [] }, { agenda: 'Recruitment', actions: [] },
+            { agenda: 'Estates', actions: [] }, { agenda: 'IT Estates', actions: [] }, { agenda: 'AOB', actions: [] }
+        ];
+
+        const updateCallApp = {
+            state: { rows: [] },
+            init() {
+                this.state.rows = [];
+                let idCounter = 1;
+                updateCallAgenda.forEach(item => {
+                    if (item.actions.length > 0) {
+                        item.actions.forEach(action => {
+                            this.state.rows.push({ id: idCounter++, agenda: item.agenda, action: action, assignee: '', deadline: '', status: '', conclusion: '' });
+                        });
+                    } else {
+                         this.state.rows.push({ id: idCounter++, agenda: item.agenda, action: '', assignee: '', deadline: '', status: '', conclusion: '' });
+                    }
+                });
+            },
+            render() {
+                const mainContent = document.getElementById('update-call-main');
+                if (!mainContent) return;
+                mainContent.innerHTML = `<section class="glass-card p-6"><div class="overflow-x-auto">${this.createTableHTML()}</div></section>`;
+            },
+            getRagCss(status) { switch (status) { case 'Completed': return 'bg-green-500 rag-glow-green'; case 'On Track': return 'bg-amber-500 rag-glow-amber'; case 'Off Track': return 'bg-red-500 rag-glow-red'; default: return 'bg-gray-400'; } },
+            createTableHTML() {
+                let currentAgenda = "";
+                const rowsHtml = this.state.rows.map(row => {
+                    let agendaCell = ``;
+                    if (row.agenda !== currentAgenda) {
+                        const rowSpan = this.state.rows.filter(r => r.agenda === row.agenda).length;
+                        agendaCell = `<td class="p-3 border-b border-r border-gray-300/50 font-semibold text-slate-700 align-top" rowspan="${rowSpan}">${row.agenda}</td>`;
+                        currentAgenda = row.agenda;
+                    }
+                    return `<tr class="hover:bg-white/20"><td class="p-1 border-b border-gray-300/50"><input type="text" value="${row.action}" onchange="updateCallApp.updateRow(${row.id}, 'action', this.value)" class="w-full p-2 bg-transparent border-none focus:ring-0 form-input"></td><td class="p-1 border-b border-gray-300/50"><input type="text" value="${row.assignee}" onchange="updateCallApp.updateRow(${row.id}, 'assignee', this.value)" class="w-full p-2 bg-transparent border-none focus:ring-0 form-input"></td><td class="p-1 border-b border-gray-300/50"><input type="date" value="${row.deadline}" onchange="updateCallApp.updateRow(${row.id}, 'deadline', this.value)" class="w-full p-2 bg-transparent border-none focus:ring-0 form-input"></td><td class="p-1 border-b border-gray-300/50"><div class="flex items-center space-x-2"><span class="h-4 w-4 rounded-full inline-block ${this.getRagCss(row.status)}"></span><select onchange="updateCallApp.updateRow(${row.id}, 'status', this.value)" class="w-full p-2 bg-transparent border-none focus:ring-0 appearance-none form-input"><option value="" ${row.status === '' ? 'selected' : ''}>Select...</option><option value="On Track" ${row.status === 'On Track' ? 'selected' : ''}>On Track</option><option value="Off Track" ${row.status === 'Off Track' ? 'selected' : ''}>Off Track</option><option value="Completed" ${row.status === 'Completed' ? 'selected' : ''}>Completed</option></select></div></td><td class="p-1 border-b border-gray-300/50"><textarea onchange="updateCallApp.updateRow(${row.id}, 'conclusion', this.value)" class="w-full p-2 bg-transparent border-none focus:ring-0 resize-none h-10 form-input">${row.conclusion}</textarea></td></tr>`.replace(/^<tr.*?>/, `$&${agendaCell}`);
+                }).join('');
+
+                return `<table class="min-w-full text-sm"><thead class="bg-transparent"><tr class="text-left text-xs font-medium text-gray-500 uppercase tracking-wider"><th class="p-3 w-1/6">Agenda Item</th><th class="p-3 w-1/6">Actions</th><th class="p-3 w-1/6">Assignee</th><th class="p-3 w-1/6">Deadline</th><th class="p-3 w-1/6">Status</th><th class="p-3 w-1/6">Discussion/Conclusion</th></tr></thead><tbody class="divide-y divide-gray-200/50">${rowsHtml}</tbody></table>`;
+            },
+            updateRow(id, key, value) { const rowIndex = this.state.rows.findIndex(r => r.id === id); if (rowIndex > -1) { this.state.rows[rowIndex][key] = value; } this.render(); }
+        };
+
+        // =================================================================================
+        // MODAL LOGIC (GLOBAL)
+        // =================================================================================
+        const modalContainer = document.getElementById('modal-container');
+        function openModal(innerHtml) { modalContainer.innerHTML = `<div class="fixed inset-0 modal-overlay flex items-center justify-center z-50">${innerHtml}</div>`; }
+        function closeModal() { modalContainer.innerHTML = ''; }
+        function openAddTaskModal(sectionId) { const opts = checklistApp.responsibleTitles.map(t => `<option value="${t}">${t}</option>`).join(''); openModal(`<form id="add-task-form" class="glass-card p-8 rounded-lg w-full max-w-md"><h3 class="text-2xl font-bold text-slate-800 mb-4">Add New Task</h3><div class="mb-4"><label class="block text-sm font-medium text-gray-700">Description</label><input type="text" name="description" class="mt-1 block w-full rounded-md shadow-sm form-input glass-input" required /></div><div class="mb-4"><label class="block text-sm font-medium text-gray-700">Responsible</label><select name="responsible" class="mt-1 block w-full rounded-md shadow-sm form-input glass-input" required><option value="" disabled selected>Select a title...</option>${opts}</select></div><div class="mb-4"><label class="block text-sm font-medium text-gray-700">Due Date</label><input type="date" name="dueDate" class="mt-1 block w-full rounded-md shadow-sm form-input glass-input" required /></div><div class="flex justify-end space-x-4 mt-6"><button type="button" onclick="closeModal()" class="font-bold py-2 px-4 rounded-lg hover:bg-gray-200/50">Cancel</button><button type="submit" class="font-bold py-2 px-5 rounded-lg shadow-md text-white" style="background-color: var(--primary-color)">Add Task</button></div></form>`); document.getElementById('add-task-form').addEventListener('submit', (e) => { e.preventDefault(); checklistApp.addTask(sectionId, new FormData(e.target)); closeModal(); }); }
+        function openAddSectionModal() { openModal(`<form id="add-section-form" class="glass-card p-8 rounded-lg w-full max-w-md"><h3 class="text-2xl font-bold text-slate-800 mb-4">Add New Section</h3><div class="mb-4"><label class="block text-sm font-medium text-gray-700">Section Title</label><input type="text" name="title" class="mt-1 block w-full rounded-md shadow-sm form-input glass-input" required /></div><div class="flex justify-end space-x-4 mt-6"><button type="button" onclick="closeModal()" class="font-bold py-2 px-4 rounded-lg hover:bg-gray-200/50">Cancel</button><button type="submit" class="font-bold py-2 px-5 rounded-lg shadow-md text-white" style="background-color: var(--primary-color)">Add Task</button></div></form>`); document.getElementById('add-section-form').addEventListener('submit', (e) => { e.preventDefault(); checklistApp.addSection(new FormData(e.target).get('title')); closeModal(); }); }
+        function openConfirmModal(action, id, itemName) { openModal(`<div class="glass-card p-8 rounded-lg w-full max-w-sm text-center"><h3 class="text-xl font-bold text-slate-800 mb-4">Are you sure?</h3><p class="text-gray-700 mb-6">Do you really want to delete ${itemName}?</p><div class="flex justify-center space-x-4"><button onclick="closeModal()" class="font-bold py-2 px-6 rounded-lg bg-gray-200 hover:bg-gray-300">Cancel</button><button id="confirm-btn" class="font-bold py-2 px-6 rounded-lg shadow-md text-white bg-red-600 hover:bg-red-700">Confirm</button></div></div>`); document.getElementById('confirm-btn').onclick = () => { if(action === 'deleteTask') checklistApp.deleteTask(id); if(action === 'deleteSection') checklistApp.deleteSection(id); closeModal(); }; }
+
+        // =================================================================================
+        // INITIAL RENDER
+        // =================================================================================
+        document.addEventListener('DOMContentLoaded', () => {
+            updateCallApp.init(); // Initialize the empty state for the update call page
+            showPage('checklist'); // Start on the checklist page
+        });
+    </script>
+</body>
+</html>
