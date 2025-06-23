@@ -1,0 +1,1630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Implementation App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #015046;
+            --primary-color-light: #027a6a;
+            --primary-color-focus-ring: rgba(1, 80, 70, 0.3);
+            --secondary-color: #9BD5DC;
+            --glass-bg: rgba(255, 255, 255, 0.85); /* Increased opacity for a whiter look */
+            --glass-border: rgba(255, 255, 255, 0.7);
+            --glass-input-bg: rgba(255, 255, 255, 0.4);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #e8f1f0;
+        }
+
+        .glass-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+            border-radius: 1rem;
+        }
+
+        .sidebar-glass {
+            background-color: var(--primary-color);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .form-input:focus {
+            border-color: var(--primary-color) !important;
+            box-shadow: 0 0 0 3px var(--primary-color-focus-ring) !important;
+            outline: none !important;
+        }
+        
+        .nav-link.active {
+            background-color: var(--primary-color-light);
+            color: white;
+        }
+        .nav-link.active:hover {
+            background-color: var(--primary-color-light);
+        }
+        
+        .modal-overlay {
+            background-color: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+
+        .table-fixed-layout {
+            table-layout: fixed;
+        }
+
+        .collapsible-content {
+            overflow: hidden;
+            transition: max-height 0.5s ease-in-out, opacity 0.5s ease-in-out;
+            max-height: 4000px; /* Increased high enough value for content */
+            opacity: 1;
+        }
+
+        .collapsible-content.hidden {
+            max-height: 0;
+            opacity: 0;
+        }
+        .dragging {
+            opacity: 0.5;
+            background: var(--secondary-color);
+            display: table;
+            width: 100%;
+        }
+        .drop-indicator-above {
+            border-top: 3px solid var(--primary-color-light);
+        }
+        .drop-indicator-below {
+             border-bottom: 3px solid var(--primary-color-light);
+        }
+        
+        @keyframes fly-in {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.98);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .dashboard-card {
+            opacity: 0;
+            animation: fly-in 0.5s ease-out forwards;
+        }
+
+        /* === FLOATING TASK BAR STYLES === */
+        #floating-task-bar {
+            position: fixed;
+            bottom: 1.5rem;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(220, 235, 240, 0.7); /* Frutiger Aero light blueish glass */
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            border-radius: 2rem;
+            padding: 0.5rem;
+            box-shadow: 0 8px 32px 0 rgba(0, 50, 80, 0.2), 0 0 1px 1px rgba(255, 255, 255, 0.6) inset;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            z-index: 40;
+            transition: opacity 0.3s, transform 0.3s;
+        }
+        
+        #floating-task-bar.hidden {
+            opacity: 0;
+            transform: translateX(-50%) translateY(100px);
+            pointer-events: none;
+        }
+
+        .task-bar-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center; /* Center the icon */
+            width: 50px; /* Set a fixed width */
+            height: 50px; /* Set a fixed height */
+            border-radius: 1.5rem;
+            border: 1px solid transparent;
+            font-weight: 600;
+            color: var(--primary-color);
+            background: rgba(255, 255, 255, 0.3);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05), 0 0 1px 1px rgba(255, 255, 255, 0.4) inset;
+            transition: all 0.2s ease-out;
+            cursor: pointer;
+        }
+
+        .task-bar-btn:hover {
+            background: rgba(255, 255, 255, 0.7);
+            box-shadow: 0 4px 15px rgba(0, 80, 70, 0.1), 0 0 1px 1px rgba(255, 255, 255, 0.8) inset;
+            transform: translateY(-2px);
+        }
+        
+        .task-bar-btn.active {
+            background: var(--secondary-color);
+            color: var(--primary-color);
+            box-shadow: 0 0 20px rgba(155, 213, 220, 0.9), 0 0 1px 1px rgba(255, 255, 255, 0.2) inset;
+            border-color: rgba(1, 80, 70, 0.2);
+            transform: translateY(-2px);
+        }
+        
+        .task-bar-btn .fa-solid {
+             font-size: 1.2rem; /* Slightly larger icon */
+        }
+        
+        .task-bar-search-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        #task-search-input {
+            width: 200px;
+            height: 50px;
+            border-radius: 1.5rem;
+            border: none;
+            padding-left: 2.5rem;
+            padding-right: 1rem;
+            font-weight: 500;
+            background: rgba(255, 255, 255, 0.3);
+            box-shadow: 0 0 1px 1px rgba(255, 255, 255, 0.4) inset;
+            color: var(--primary-color);
+            transition: all 0.2s ease-out;
+        }
+        
+        #task-search-input::placeholder {
+            color: var(--primary-color);
+            opacity: 0.7;
+        }
+        
+        #task-search-input:focus {
+            outline: none;
+            background: rgba(255, 255, 255, 0.7);
+            box-shadow: 0 0 15px rgba(0, 80, 70, 0.1), 0 0 1px 1px rgba(255, 255, 255, 0.8) inset;
+        }
+
+        .task-bar-search-container .fa-search {
+            position: absolute;
+            left: 1rem;
+            color: var(--primary-color);
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        /* === FLOATING ACTION BUTTONS (FAB) CONTAINER === */
+        .fab {
+            background-color: var(--secondary-color);
+            color: var(--primary-color);
+            width: 4rem; /* 64px */
+            height: 4rem; /* 64px */
+            border-radius: 9999px; /* full */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.875rem; /* 30px */
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            transition: all 0.2s ease-out;
+        }
+
+        .fab:hover {
+            opacity: 0.9;
+            transform: scale(1.05);
+        }
+        
+        /* === TOAST NOTIFICATION === */
+        #toast-container {
+            position: fixed;
+            bottom: 6rem; /* Position above the filter bar */
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .toast {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1.5rem;
+            background: rgba(1, 80, 70, 0.9); /* primary color */
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            color: white;
+            font-weight: 600;
+            border-radius: 2rem;
+            box-shadow: 0 8px 32px 0 rgba(0, 50, 80, 0.2);
+            animation: toast-in 0.5s ease-out forwards;
+        }
+
+        @keyframes toast-in {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <div class="flex h-screen">
+        <!-- Sidebar Navigation -->
+        <aside class="w-64 p-4 flex-shrink-0">
+            <nav id="sidebar-nav" class="h-full p-4 flex flex-col rounded-2xl shadow-lg sidebar-glass">
+                <!-- Group 1: Logo -->
+                <div class="text-center p-4 mb-4 bg-white/10 rounded-xl">
+                    <h2 class="text-2xl font-bold text-white">CCH Group</h2>
+                </div>
+                
+                <!-- Group 2: Main Nav -->
+                <ul class="space-y-1 p-2 bg-white/10 rounded-xl">
+                    <li><a href="#" class="nav-link flex items-center p-3 rounded-lg text-white hover:bg-white/20 transition-colors duration-200" onclick="showPage('dashboard', event)"><i class="fas fa-tachometer-alt w-6 mr-3"></i> Dashboard</a></li>
+                    <li><a href="#" class="nav-link flex items-center p-3 rounded-lg text-white hover:bg-white/20 transition-colors duration-200" onclick="showPage('kick-off-call', event)"><i class="fas fa-rocket w-6 mr-3"></i> Kick Off Call</a></li>
+                    <li><a href="#" class="nav-link flex items-center p-3 rounded-lg text-white hover:bg-white/20 transition-colors duration-200" onclick="showPage('update-call', event)"><i class="fas fa-sync-alt w-6 mr-3"></i> Update Call</a></li>
+                    <li><a href="#" class="nav-link flex items-center p-3 rounded-lg text-white hover:bg-white/20 transition-colors duration-200" onclick="showPage('rates-overview', event)"><i class="fas fa-file-pen w-6 mr-3"></i> Rates Overview</a></li>
+                </ul>
+
+                <!-- Group 3: Checklists -->
+                <ul class="space-y-1 p-2 mt-4 bg-white/10 rounded-xl">
+                    <li><a href="#" class="nav-link flex items-center p-3 rounded-lg text-white hover:bg-white/20 transition-colors duration-200" onclick="showPage('pre-implementation', event)"><i class="fas fa-history w-6 mr-3"></i> Pre Implementation</a></li>
+                    <li><a href="#" class="nav-link flex items-center p-3 rounded-lg text-white hover:bg-white/20 transition-colors duration-200" onclick="showPage('implementation', event)"><i class="fas fa-shipping-fast w-6 mr-3"></i> Implementation</a></li>
+                    <li><a href="#" class="nav-link flex items-center p-3 rounded-lg text-white hover:bg-white/20 transition-colors duration-200" onclick="showPage('pre-go-live', event)"><i class="fas fa-tasks w-6 mr-3"></i> Pre & Go Live</a></li>
+                    <li><a href="#" class="nav-link flex items-center p-3 rounded-lg text-white hover:bg-white/20 transition-colors duration-200" onclick="showPage('embedding-period', event)"><i class="fas fa-award w-6 mr-3"></i> Embedding Period</a></li>
+                    <li><a href="#" class="nav-link flex items-center p-3 rounded-lg text-white hover:bg-white/20 transition-colors duration-200" onclick="showPage('finance-checks', event)"><i class="fas fa-file-invoice-dollar w-6 mr-3"></i> Finance Checks</a></li>
+                </ul>
+                
+                <!-- Spacer to push settings to the bottom -->
+                <div class="flex-grow"></div>
+
+                <!-- Group 4: Settings -->
+                <ul class="space-y-1 p-2 bg-white/10 rounded-xl">
+                    <li><a href="#" class="nav-link flex items-center p-3 rounded-lg text-white hover:bg-white/20 transition-colors duration-200" onclick="showPage('settings', event)"><i class="fas fa-cog w-6 mr-3"></i> Settings</a></li>
+                </ul>
+            </nav>
+        </aside>
+
+        <!-- Main Content Area -->
+        <div id="main-content-area" class="flex-1 p-4 md:p-8 overflow-y-auto">
+            <!-- Pages will be rendered here -->
+        </div>
+    </div>
+    
+    <!-- Floating Action Button Container -->
+    <div id="fab-container" class="fixed bottom-6 right-8 z-40">
+        <button id="add-task-btn" onclick="openGlobalAddTaskModal()" title="Add New Task" class="fab hidden">
+            <i class="fas fa-plus"></i>
+        </button>
+        <button id="copy-table-btn" onclick="copyUpdateCallTable()" title="Copy Table to Clipboard" class="fab hidden">
+            <i class="fas fa-copy"></i>
+        </button>
+    </div>
+    
+    <!-- Floating Task Bar -->
+    <div id="floating-task-bar" class="hidden">
+        <button class="task-bar-btn" data-filter="notStarted" onclick="checklistApp.applyGlobalFilter('notStarted')" title="Filter: Not Started"><i class="fa-solid fa-pause-circle"></i></button>
+        <button class="task-bar-btn" data-filter="overdue" onclick="checklistApp.applyGlobalFilter('overdue')" title="Filter: Overdue"><i class="fa-solid fa-calendar-times"></i></button>
+        <button class="task-bar-btn" data-filter="onTrack" onclick="checklistApp.applyGlobalFilter('onTrack')" title="Filter: On Track"><i class="fa-solid fa-person-running"></i></button>
+        <button class="task-bar-btn" data-filter="completed" onclick="checklistApp.applyGlobalFilter('completed')" title="Filter: Completed & N/A"><i class="fa-solid fa-check-double"></i></button>
+        <button class="task-bar-btn" onclick="checklistApp.toggleAllSections()" title="Toggle All Sections"><i class="fa-solid fa-compress-arrows-alt"></i></button>
+        <div class="task-bar-search-container">
+            <i class="fas fa-search"></i>
+            <input type="text" id="task-search-input" onkeyup="checklistApp.handleSearch(event)" placeholder="Search tasks...">
+        </div>
+    </div>
+    
+    <!-- Modal and Toast Containers -->
+    <div id="modal-container"></div>
+    <div id="toast-container"></div>
+
+    <script>
+        // =================================================================================
+        // GLOBAL STATE & UTILITIES
+        // =================================================================================
+        let appState = {
+            projectName: 'Branch Example',
+            opCoName: 'OpCoExample',
+            goLiveDate: '2026-01-01',
+            implementationDuration: '6',
+            volumeOfHours: '0',
+            ssUserVolumes: '120',
+            privateUserVolumes: '15',
+            careProfessionalVolumes: '85',
+            operationalStaffVolumes: '7',
+            firstPayrollDate: '2026-02-01',
+            firstInvoiceDate: '2026-02-01',
+            secondPayrollDate: '2026-03-01',
+            secondInvoiceDate: '2026-03-01'
+        };
+        
+        const today = new Date().toISOString().split('T')[0];
+        // Data store for each independent checklist page
+        let checklistData = {
+            'pre-implementation': {
+                sections: [
+                    { id: `s_pre_1`, title: 'Pre-Implementation Tasks', status: 'Not Started', isCollapsed: false, filter: '' },
+                    { id: `s_pre_2`, title: 'HR | TUPE', status: 'Not Started', isCollapsed: false, filter: '' },
+                    { id: `s_pre_3`, title: 'Recruitment Set Up', status: 'Not Started', isCollapsed: false, filter: '' },
+                    { id: `s_pre_4`, title: 'Recruitment Team', status: 'Not Started', isCollapsed: false, filter: '' },
+                    { id: `s_pre_5`, title: 'Training', status: 'Not Started', isCollapsed: false, filter: '' }
+                ],
+                tasks: [
+                    { id: `t_pre_1`, sectionId: `s_pre_1`, description: "Kick-off call scheduled following bids team handover", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_2`, sectionId: `s_pre_1`, description: "Kick-off calls scheduled for Payroll and Invoice checks for first two periods (Imp team CC'd in)", responsible: "Implementation Support Officer", dueDate: today, status: 'Completed', notes: '' },
+                    { id: `t_pre_3`, sectionId: `s_pre_1`, description: "Scheduled Pre Go Live rates call and invited all departments", responsible: "Commercial Rates Team", dueDate: "2024-05-10", status: 'Completed', notes: '' },
+                    { id: `t_pre_4`, sectionId: `s_pre_1`, description: "All departments informed of Op Co change for any implementation involving HR, Payroll, MA, AR, Alma, Rates, Recruitment, Quality", responsible: "Implementation Support Officer", dueDate: today, status: 'Completed', notes: '' },
+                    { id: `t_pre_5`, sectionId: `s_pre_1`, description: "Weekly update calls set up with same audience as kick-off call.", responsible: "Implementation Support Officer", dueDate: today, status: 'Completed', notes: '' },
+                    { id: `t_pre_6`, sectionId: `s_pre_1`, description: "Taxonomy naming agreed by ISM, LISO, RM, OD.", responsible: "Implementation Support Officer", dueDate: today, status: 'Completed', notes: '' },
+                    { id: `t_pre_7`, sectionId: `s_pre_1`, description: "Branch and additional areas set up in People Planner.", responsible: "Implementation Support Officer", dueDate: "2025-01-01", status: 'On Track', notes: '' },
+                    { id: `t_pre_8`, sectionId: `s_pre_1`, description: "Keysafe taxi card agreed and ordered; communication issued via weekly call.", responsible: "Regional Manager", dueDate: "2024-06-01", status: 'Completed', notes: '' },
+                    { id: `t_pre_9`, sectionId: `s_pre_1`, description: "LMS hierarchy created and sent to Technical Services.", responsible: "Implementation Support Officer", dueDate: "2024-06-01", status: 'N/A', notes: '' },
+                    { id: `t_pre_10`, sectionId: `s_pre_1`, description: "SharePoint set up (Branch, BM, RM, OD), MB KPI.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_11`, sectionId: `s_pre_1`, description: "ECM and Care Task fields toggled to ‘Yes’ for digital implementations in MB-Branches.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_12`, sectionId: `s_pre_1`, description: "Phones, branch tablets, and laptops ordered through Technical Services; verified by operations; added to device tracker.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_13`, sectionId: `s_pre_1`, description: "BI informed to exclude branch/scheme from mobile device automations for pool devices.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_14`, sectionId: `s_pre_1`, description: "Office lease signed by Estates.", responsible: "Estates", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_15`, sectionId: `s_pre_1`, description: "Estates equipment ordered.", responsible: "IT Estates", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_16`, sectionId: `s_pre_1`, description: "IT Estates equipment order gathered and provided to IT Estates.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_17`, sectionId: `s_pre_1`, description: "Device list obtained from IT with CWPs.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_18`, sectionId: `s_pre_1`, description: "SOTI Group set up and confirmed as correct.", responsible: "IT Estates", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_19`, sectionId: `s_pre_1`, description: "Commercial Overview call booked; attendance mandatory for BM, RM, Ops Director. Reviewed any bespoke or unusual set ups.", responsible: "Commercial Lead", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_20`, sectionId: `s_pre_2`, description: "Payroll period confirmed with HR/Payroll and Ops , including agreement on any advances needed due to split pay periods.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_21`, sectionId: `s_pre_2`, description: "HR plan for consultations with outgoing provider staff understood and consultation/TUPE meeting dates provided in the comment box. TUPE packs are ready for consultations.", responsible: "HR Business Partner", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_22`, sectionId: `s_pre_2`, description: "ELI information received for all incoming staff, including annual leave scheme details and pay rates.", responsible: "HR Business Partner", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_23`, sectionId: `s_pre_2`, description: "ELI document and 12-week average for Care Professionals shared with Megin Walker, and Paige Birchmore.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_24`, sectionId: `s_pre_2`, description: "RM completed payroll new starter forms for Care Professionals and emailed them to Megin Walker, and Paige Birchmore, with ISO and ISM CC'd.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_25`, sectionId: `s_pre_2`, description: "Process for annual leave scheme defined; TUPE staff A/L scheme in People Planner set to 'TUPE-NONSTANDARD - [date period]'.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_26`, sectionId: `s_pre_2`, description: "Liaised with Bl on annual leave tracker (previous annual leave details - taken and what's left). Branch to manage off system until falls in line.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_27`, sectionId: `s_pre_2`, description: "Future scheme changes arranged with Bl and calendar reminder set to revisit with the branch once branch falls back in line with Annual Leave scheme.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_28`, sectionId: `s_pre_2`, description: "RM added Operational staff to Digi HR.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_29`, sectionId: `s_pre_2`, description: "RTW documents for all relevant staff checked and verified by HR.", responsible: "HR Business Partner", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_30`, sectionId: `s_pre_2`, description: "DBS checks completed for incoming TUPE staff via First Advantage (bulk upload processed by Stephen Haynes where applicable).", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_31`, sectionId: `s_pre_2`, description: "First Advantage portal setup requested for new branch via IT ticket and ticket number logged in comments.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_32`, sectionId: `s_pre_3`, description: "New branch added into SharePoint MB KPI & Enabled branches.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_33`, sectionId: `s_pre_3`, description: "Branch requirements confirmed and provided to RRBP.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_34`, sectionId: `s_pre_3`, description: "Users added for access to SmartRecruiters.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_35`, sectionId: `s_pre_3`, description: "All 3 fields set to 'provisioning'.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_36`, sectionId: `s_pre_3`, description: "Automated account creation run in Alteryx to pull users through.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_37`, sectionId: `s_pre_3`, description: "Password for calendar requested via Technical Services and ISM and Paul Graham CC'd; ticket number inputted in comments.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_38`, sectionId: `s_pre_3`, description: "SmartRecruiters calendar access granted; locale settings changed to UK upon login.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_39`, sectionId: `s_pre_3`, description: "Branch name ticked under the correct region in SmartRecruiters.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_40`, sectionId: `s_pre_3`, description: "Hiring job created and branch calendar attached.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_41`, sectionId: `s_pre_3`, description: "Recruitment advertising team informed that jobs are ready for creation.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_42`, sectionId: `s_pre_3`, description: "Test candidate pushed through using ZZZ prefix once job published.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_43`, sectionId: `s_pre_3`, description: "Branch informed to block and manage their calendars appropriately.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_44`, sectionId: `s_pre_3`, description: "Branch merge completed with the following steps: 1. Job name edited to reflect new role. 2. Branch changed on all active jobs. 3. Branch area updated with info linking back to hiring job (e.g. Branch Name). 4. Job IDs and posting IDs copied from SmartRecruiters into Branch Requirements.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_45`, sectionId: `s_pre_3`, description: "Branch merge calendar decision confirmed with branch regarding which calendar will be used going forward.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_46`, sectionId: `s_pre_4`, description: "Attended early planning meetings with Rich to understand the care professional requirements and recruitment timeline. By reviewing the contract value, incoming TUPE staff, and regional benchmark of hours CPS complete every week, we established an estimate of CPs required.", responsible: "Recruitment", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_47`, sectionId: `s_pre_4`, description: "Created a demand plan to outline how many applications, interviews, and offers would be needed per week to meet the overall hiring target, using regional data.", responsible: "Recruitment", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_48`, sectionId: `s_pre_4`, description: "Held discussions with ops on which branch would be used for recruitment purposes. Agreed how the interviews will take place (in person/telephone) and by who (recruitment/ops).", responsible: "Recruitment", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_49`, sectionId: `s_pre_4`, description: "Completed demographic analysis and competitor mapping for the area.", responsible: "Recruitment", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_50`, sectionId: `s_pre_4`, description: "Assigned a dedicated regional recruiter to focus on this campaign.", responsible: "Recruitment", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_51`, sectionId: `s_pre_4`, description: "Published job adverts across all core job boards, with an advertising budget to boost visibility.", responsible: "Recruitment", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_52`, sectionId: `s_pre_4`, description: "Ran a social media campaign including a sponsored Facebook display advert and posts in local community Facebook groups.", responsible: "Recruitment", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_53`, sectionId: `s_pre_4`, description: "Initiated community outreach including engagement with DWPs, colleges, churches, community centres etc.", responsible: "Recruitment", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_54`, sectionId: `s_pre_4`, description: "Promoted the refer-a-friend scheme with local branches internally to drive candidate referrals.", responsible: "Recruitment", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_55`, sectionId: `s_pre_4`, description: "Began interviews promptly. Candidates who met the screening criteria were invited, with flexibility in scheduling to accommodate volume.", responsible: "Recruitment", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_56`, sectionId: `s_pre_4`, description: "Ensured a consistent and fair interview process. Candidates who passed were immediately progressed through to the pipeline.", responsible: "Recruitment", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_57`, sectionId: `s_pre_4`, description: "Flagged branch/scheme(s) as a priority branch to the Compliance Manager.", responsible: "Recruitment", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_58`, sectionId: `s_pre_4`, description: "Set expectations to the Compliance Manager to provide weekly forecasts to Operational teams on expected hires.", responsible: "Recruitment", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_59`, sectionId: `s_pre_4`, description: "Set expectations to the training department to offer additional sessions for the new branch/scheme candidates. Considered increasing class sizes.", responsible: "Recruitment", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_60`, sectionId: `s_pre_4`, description: "Set expectations to Operational Teams that the weekly interview targets and ratios are based on averages due to possible drop outs.", responsible: "Recruitment", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_61`, sectionId: `s_pre_4`, description: "Assigned a person from Operations to conduct interviews, allowing recruitment to focus on talent attraction.", responsible: "Recruitment", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_62`, sectionId: `s_pre_4`, description: "Compliance Manager has been sent invite to the weekly update calls.", responsible: "Recruitment", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_63`, sectionId: `s_pre_4`, description: "RRBP expected to monitor pipeline dropouts from the start, following up with candidates promptly and identify early trends to help adjust strategy.", responsible: "Recruitment", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_64`, sectionId: `s_pre_5`, description: "Training requirements gathered from Operations, covering PP, ACP, RI&OB, Insight, SOTI, LMS, CLH, FADV, Digi HR, and CCH Connect.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_65`, sectionId: `s_pre_5`, description: "Training dates and location confirmed.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_66`, sectionId: `s_pre_5`, description: "Training room confirmed for systems training.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_67`, sectionId: `s_pre_5`, description: "Training room confirmed for phone training.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_68`, sectionId: `s_pre_5`, description: "Session times for Ops systems training confirmed with BM/RM and plan sent once completed. Completed plan saved in folder and email trail confirming dates, times, and timeslots is in place.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_69`, sectionId: `s_pre_5`, description: "Session times for Care Professional phone training confirmed with BM/RM and plan sent once completed. Completed plan saved in folder and email trail confirming dates, times, and timeslots is in place.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_pre_70`, sectionId: `s_pre_5`, description: "TUPE induction training arranged with Branch and RTM.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' }
+                ]
+            },
+            'implementation': {
+                sections: [
+                    { id: 's_impl_1', title: 'Data Entry | System Config', status: 'Not Started', isCollapsed: false, filter: '' },
+                    { id: 's_impl_2', title: 'Finance Set Up', status: 'Not Started', isCollapsed: false, filter: '' },
+                    { id: 's_impl_3', title: 'Finance Set Up (Private)', status: 'Not Started', isCollapsed: false, filter: '' },
+                    { id: 's_impl_4', title: 'Service Delivery (People Planner)', status: 'Not Started', isCollapsed: false, filter: '' },
+                    { id: 's_impl_5', title: 'Service Delivery (ACP)', status: 'Not Started', isCollapsed: false, filter: '' },
+                    { id: 's_impl_6', title: 'Compliance', status: 'Not Started', isCollapsed: false, filter: '' },
+                    { id: 's_impl_7', title: 'Operational Training', status: 'Not Started', isCollapsed: false, filter: '' },
+                    { id: 's_impl_8', title: 'Care Professional Training', status: 'Not Started', isCollapsed: false, filter: '' },
+                    { id: 's_impl_9', title: 'Device Checks', status: 'Not Started', isCollapsed: false, filter: '' },
+                    { id: 's_impl_10', title: 'Quality', status: 'Not Started', isCollapsed: false, filter: '' },
+                    { id: 's_impl_11', title: 'Recruitment', status: 'Not Started', isCollapsed: false, filter: '' }
+                ],
+                tasks: [
+                    { id: `t_impl_1`, sectionId: `s_impl_1`, description: "Service User data received and added to import file. Any missing data was flagged to Ops/HR. Missing data listed in the comments.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_2`, sectionId: `s_impl_1`, description: "Service User PP import completed. Repeated where multiple imports were required.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_3`, sectionId: `s_impl_1`, description: "Care professional data received and added to import file. Any missing data was flagged to Ops/HR. Missing data listed in the comments.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_4`, sectionId: `s_impl_1`, description: "Care professional PP import completed. Repeated where multiple imports were required.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_5`, sectionId: `s_impl_1`, description: "Continuous start date entered into TUPE Tab and Go Live date entered into start date field (for TUPE cases).", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_6`, sectionId: `s_impl_1`, description: "Integration confirmed working-changes made in PP reflected in ACP.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_7`, sectionId: `s_impl_1`, description: "Holiday run added to all care staff.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_8`, sectionId: `s_impl_1`, description: "Three internal service users created: Office Management Internal, Care Worker Management Internal, Practice Pathway.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_9`, sectionId: `s_impl_1`, description: "Branch employee created and virtual employee box ticked.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_10`, sectionId: `s_impl_1`, description: "ECM Alerts configured and tested.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_11`, sectionId: `s_impl_1`, description: "Internal Shifts service user created where applicable (usually for ECS, but checked).", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_12`, sectionId: `s_impl_1`, description: "(Transfer from one pod to another) Inputted all devices from old branch into new branch and added all staff into correct groups.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_13`, sectionId: `s_impl_1`, description: "(Merge, same pod) Added all staff into correct groups.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_14`, sectionId: `s_impl_2`, description: "Commercial overview completed and supporting documents signed off by ops, finance business partner and rates, email", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_15`, sectionId: `s_impl_2`, description: "Rates Overview Document populated in the 'Rates Overview' tab.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_16`, sectionId: `s_impl_2`, description: "Unusual setups documented in the handover document.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_17`, sectionId: `s_impl_2`, description: "Funder guide built for the branch (template saved in template folder) - ICB, dom, split funders - should be specific.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_18`, sectionId: `s_impl_2`, description: "Funders set up by Rates Team in People Planner correctly.", responsible: "Commercial Rates Team", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_19`, sectionId: `s_impl_2`, description: "Rate Sheets/Travel Sheets set up by Rates Team in People Planner correctly.", responsible: "Commercial Rates Team", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_20`, sectionId: `s_impl_2`, description: "TUPE Rate Sheet requested to be hidden by Rates Team after Imp team attach.", responsible: "Commercial Rates Team", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_21`, sectionId: `s_impl_2`, description: "Payroll & Invoice Runs confirmed and set up by Rates Team. ISO checked by logging into PP under specific account (see S", responsible: "Commercial Rates Team", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_22`, sectionId: `s_impl_2`, description: "Rates setup confirmed to match Branch commercial overview, referring to the 'Rates Overview Doc'.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_23`, sectionId: `s_impl_3`, description: "List of Privates service users gathered and Private DIMS request spreadsheet created (template saved in template folder).", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_24`, sectionId: `s_impl_3`, description: "Spreadsheet completed and sent to Ashleigh Hewitt & Michelle Cooper.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_25`, sectionId: `s_impl_3`, description: "List received back from SSC with Dim Codes, payment method, and any aged debt.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_26`, sectionId: `s_impl_3`, description: "Private Contracts set up in People Planner with new DIMS added to 'External ID' in Invoice Tab.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_27`, sectionId: `s_impl_3`, description: "Privates set up correctly, with set up, config, Dims code, and EMS rules checked.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_28`, sectionId: `s_impl_3`, description: "EMS Rules confirmed correct on all Funders (all set to 'Equals EMS Duration').", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_29`, sectionId: `s_impl_3`, description: "Direct payments set up as 'direct Payments' and kept separate from privates for clear identification.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_30`, sectionId: `s_impl_4`, description: "All Service Funders attached to service users.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_31`, sectionId: `s_impl_4`, description: "Dual funder and/or Contributions service users checked and set up correctly.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_32`, sectionId: `s_impl_4`, description: "Social Services Ref numbers added into People Planner in all 3 fields.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_33`, sectionId: `s_impl_4`, description: "SS ref numbers report run to identify any missing and flagged to branch (saved in Validation folder).", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_34`, sectionId: `s_impl_4`, description: "Confirmed if Branch had any service users on 48/72 hour medication affecting service order setup.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_35`, sectionId: `s_impl_4`, description: "Service users' NOK entered into People Planner including NOK Email where required.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_36`, sectionId: `s_impl_4`, description: "Service users' vulnerability confirmed correct in People Planner. (High/Med/Low).", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_37`, sectionId: `s_impl_4`, description: "Service users' service priority confirmed correct in People Planner. (High/Med/Low)", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_38`, sectionId: `s_impl_4`, description: "Branch added service suspends for Service Users.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_39`, sectionId: `s_impl_4`, description: "All Care Professionals & Operational Staff Position types confirmed correct in People Planner.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_40`, sectionId: `s_impl_4`, description: "Care professionals' NOK details entered into People Planner.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_41`, sectionId: `s_impl_4`, description: "Branch added care worker Availability, emphasising use of non-confirmed availability for extra shifts.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_42`, sectionId: `s_impl_4`, description: "RTW documents and Eligibility confirmed correct in PP.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_43`, sectionId: `s_impl_4`, description: "Pay Rate Sheets, Desired hours, Guaranteed hours, Payroll run, Driver/Walker status, and Travel Rate Sheet added where", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_44`, sectionId: `s_impl_4`, description: "Care professionals shared by another branch or with additional areas updated in People Planner (shared care worker acri", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_45`, sectionId: `s_impl_4`, description: "Decline list for care professionals and service users collated and added into People Planner.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_46`, sectionId: `s_impl_4`, description: "Care professionals on annual leave during 'Go Live' week and the following week gathered and inputted into PP Post alloca", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_47`, sectionId: `s_impl_4`, description: "Branch added all care professionals' Annual Leave via Holiday tab (Post Template Checks).", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_48`, sectionId: `s_impl_4`, description: "Annual Leave entered correctly via Holiday Tab (only actual days of work added).", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_49`, sectionId: `s_impl_4`, description: "Any errors on Annual Leave entry corrected by branch staff.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_50`, sectionId: `s_impl_4`, description: "Branch added periods of Unavailability (Sickness, Maternity, Paternity, etc.) for care professionals.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_51`, sectionId: `s_impl_4`, description: "FCS duties rostered in People Planner under Internal Office Management Service User.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_52`, sectionId: `s_impl_4`, description: "Confirmed with Branch if using Runs or templating direct to care professional.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_53`, sectionId: `s_impl_4`, description: "Runs created ahead of allocations if applicable.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_54`, sectionId: `s_impl_4`, description: "Branch allocations of service users to Runs completed (and shifts where applicable).", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_55`, sectionId: `s_impl_4`, description: "Branch allocations of runs to care staff completed.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_56`, sectionId: `s_impl_4`, description: "Completed permanent allocations for week 1 and week 2 where applicable.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_57`, sectionId: `s_impl_4`, description: "Templates for week 1 and week 2 added where applicable.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_58`, sectionId: `s_impl_4`, description: "Rest of allocations completed outside of templating for week 1 and 2 (prioritise Go Live date and day after).", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_59`, sectionId: `s_impl_4`, description: "Templates for 'Go Live' and post 'Go Live' checked.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_60`, sectionId: `s_impl_4`, description: "Branch made aware that annual leave periods spanning two payroll periods will be paid in the end of the first payroll perioc", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_61`, sectionId: `s_impl_4`, description: "On Call pattern rostered correctly and allocated.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_62`, sectionId: `s_impl_4`, description: "Shift breaks have been set up where applicable.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_63`, sectionId: `s_impl_4`, description: "Call booked in with BM and RM to complete a service order comparison (using any data we have received).", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_64`, sectionId: `s_impl_5`, description: "Ops Staff and care professionals added to correct groups within ACP ( BM/RM/OD/FCS/Quality ).", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_65`, sectionId: `s_impl_5`, description: "Branch address and phone number added into ' Config ' - ' Branches '.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_66`, sectionId: `s_impl_5`, description: "All devices configured and allocated to care professionals ( referenced ACP Phone Config guide as needed ).", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_67`, sectionId: `s_impl_5`, description: "Bodymap displayed correctly on tablets.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_68`, sectionId: `s_impl_5`, description: "Care professional ACP Credentials created and distributed to BM/RM to print ahead of CW Phone Training.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_69`, sectionId: `s_impl_5`, description: "Mobile phone spreadsheet completed ( template saved in template folder ). CWP to be sent to desktop for bulk upload of Ca", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_70`, sectionId: `s_impl_5`, description: "Check IT have uploaded names correctly as per above task.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_71`, sectionId: `s_impl_5`, description: "Folders created within documents tab on branch employee record including Team Meeting, Health and Safety, VOC Analy", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_72`, sectionId: `s_impl_5`, description: "Uploaded care plans to documents section in specific service user case file.", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_73`, sectionId: `s_impl_5`, description: "Method established for obtaining data for care and medication task entry if care plans are not available.", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_74`, sectionId: `s_impl_5`, description: "Plan outlined for entry of care and medication tasks including support and deadlines.", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_75`, sectionId: `s_impl_5`, description: "Plan outlined for checking personalisation with expectations of what good looks like.", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_76`, sectionId: `s_impl_5`, description: "Tracked care and medication task entry and personalisation; reported back via Implementation team and weekly update c", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_77`, sectionId: `s_impl_5`, description: "Audit of completed risk assessments for new service users conducted; feedback provided to assessors and managers; up", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_78`, sectionId: `s_impl_5`, description: "Custom schedule care tasks set up correctly when implementing ECM to existing branch.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_79`, sectionId: `s_impl_5`, description: "Keysafe numbers encrypted using confirmed Taxis Card.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_80`, sectionId: `s_impl_5`, description: "Keysafe and Access information added into Access Care Planning.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_81`, sectionId: `s_impl_5`, description: "Request submitted to Technical Services to add branch to the drop-down section for RA&CP.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_82`, sectionId: `s_impl_5`, description: "(Move, new pod) Service User Portal Accounts gathered from existing branch and set up in new pod where applicable.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_83`, sectionId: `s_impl_5`, description: "(ECM and new branch) Service User Portal Accounts gathered as the branch is going fully digital and sent to IT to set up.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_84`, sectionId: `s_impl_6`, description: "All care worker compliance data entered into People Planner (DBS/ID badge/training).", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_85`, sectionId: `s_impl_6`, description: "All care worker compliance data entered into ACP where applicable (supervision, appraisal, spot check, contract signed)", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_86`, sectionId: `s_impl_6`, description: "Expiry dates for any 'Time Limited' eligibility entries from export checked against care professional files and matched with", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_87`, sectionId: `s_impl_6`, description: "All service user compliance data entered into ACP where applicable (RA&CP, VOC).", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_88`, sectionId: `s_impl_6`, description: "Branch information page completed against the branch employee (virtual care worker). ISO to support.", responsible: "Regional Manager", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_89`, sectionId: `s_impl_6`, description: "Team Meeting date added to the Branch Dashboard page.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_90`, sectionId: `s_impl_7`, description: "Model Branch Introduction and Access Care Planning Courses released to Ops staff.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_91`, sectionId: `s_impl_7`, description: "All Branch Staff attended People Planner Training and liaised with line managers if anyone has not.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_92`, sectionId: `s_impl_7`, description: "Attendees and non-attendees recorded and rebooked.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_93`, sectionId: `s_impl_7`, description: "Branch staff trained on Annual Leave Reporting (TUPE process managed manually until migration).", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_94`, sectionId: `s_impl_7`, description: "All Branch Staff received People Planner login details by email from Implementation Support Officer.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_95`, sectionId: `s_impl_7`, description: "All Branch Staff/FCS attended Access Care Planning - Care Plan & Risk Assessment Training.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_96`, sectionId: `s_impl_7`, description: "All Branch Staff/FCS attended Access Care Planning - Desktop, incorporating Care & Medication Tasks.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_97`, sectionId: `s_impl_7`, description: "All Branch Staff received Access Care Planning login details by email from Implementation Support Officer.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_98`, sectionId: `s_impl_7`, description: "Insight & SOTI training delivered to all Branch staff, including On-Call staff.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_99`, sectionId: `s_impl_7`, description: "LMS & CLH Training delivered for Branch & LMS Managers with ACP course tracking.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_100`, sectionId: `s_impl_7`, description: "Digi HR & FADV training delivered to Branch Managers.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_101`, sectionId: `s_impl_7`, description: "Training environment set up with minimum of 3 service users and 2 care professionals; 2 phones set up to training care pro", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_102`, sectionId: `s_impl_7`, description: "Training login details sent to Branch via email.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_103`, sectionId: `s_impl_7`, description: "Staff completed LMS courses on ACP.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_104`, sectionId: `s_impl_7`, description: "Staff completed LMS courses on Event Management.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_105`, sectionId: `s_impl_7`, description: "Staff completed LMS courses on Insight.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_106`, sectionId: `s_impl_7`, description: "Quality Lead booked to complete Record Book Audit Training.", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_107`, sectionId: `s_impl_7`, description: "List of Practice Partners gathered and added to appropriate groups in ACP and individual PP records (Training and Qualific", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_108`, sectionId: `s_impl_8`, description: "Delivered phones set up in training environment for training (if not tablets used as training devices).", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_109`, sectionId: `s_impl_8`, description: "Super Users identified with BM and booked to attend and deliver sessions.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_110`, sectionId: `s_impl_8`, description: "Professional Communications printed and distributed to care professionals and placed in each service user's property.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_111`, sectionId: `s_impl_8`, description: "Email the Care Worker Portal Guide, ACP App Quick Guide and Credentials to all employees. Give them the option to print", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_112`, sectionId: `s_impl_8`, description: "Training attendees and non-attendees recorded and rebooked.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_113`, sectionId: `s_impl_8`, description: "Daily non-attendee checks shared with BM, and saved in folder.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_114`, sectionId: `s_impl_8`, description: "All care professionals signed the mobile device contract on ACP (bespoke ACP form for TUPE staff).", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_115`, sectionId: `s_impl_8`, description: "Digital ID badges completed during training; outstanding ones highlighted to BM.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_116`, sectionId: `s_impl_8`, description: "Staff requiring additional training support identified and highlighted to Branch.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_117`, sectionId: `s_impl_8`, description: "LMS ACP course completion report run to verify completion by care professionals.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_118`, sectionId: `s_impl_9`, description: "Request mobile phone spreadsheet from Technical Services including device numbers CWP.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_119`, sectionId: `s_impl_9`, description: "Complete the mobile phone spreadsheet received from Technical Services (include CW name, CWP, UUID).", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_120`, sectionId: `s_impl_9`, description: "Once completed, send to Technical Services who will import names into SOTI.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_121`, sectionId: `s_impl_9`, description: "ACP Configuration - Ensure phones are assigned to each care worker and tablets to the FCS and branch staff.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_122`, sectionId: `s_impl_9`, description: "Ensure care worker mobile numbers are added in to the People Planner, communication tab - home field.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_123`, sectionId: `s_impl_9`, description: "Care worker name is displayed on the phone box ready for training.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_124`, sectionId: `s_impl_9`, description: "SOTI-Test remote function works on SOTI for all employees on thin client and on call laptop (unlock code in branch name in SOTI).", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_125`, sectionId: `s_impl_9`, description: "Check each application is working as expected, opens/loads with no issues.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_126`, sectionId: `s_impl_9`, description: "Remove Airplane Mode and Mobile Data Icons from the dropdown display.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_127`, sectionId: `s_impl_9`, description: "Internet Sites - Access Workspace & Employee Portal loads to login page.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_128`, sectionId: `s_impl_9`, description: "MobiControl - Ensure Agent status / Enrolment is Connected.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_129`, sectionId: `s_impl_9`, description: "Settings - Ensure you can connect/disconnect from the branches Wi-Fi and the phone picks up 4G/5G.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_130`, sectionId: `s_impl_9`, description: "Google Maps is loaded onto the device.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_131`, sectionId: `s_impl_9`, description: "Rota Download - Ensure Portal link is available and the files folder called 'Rota' is available.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_132`, sectionId: `s_impl_9`, description: "Tablet cases ordered.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_133`, sectionId: `s_impl_9`, description: "Checked each application was working as expected, opened and loaded with no issues.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_134`, sectionId: `s_impl_9`, description: "Accessed Care Planning App and entered FCS/Senior Carer details assigned to the device to confirm login and device sync with ACP.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_135`, sectionId: `s_impl_9`, description: "Verified MobiControl Agent status and enrolment status showed 'Connected'.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_136`, sectionId: `s_impl_9`, description: "Confirmed Body Map was available on the tablet.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_137`, sectionId: `s_impl_9`, description: "Completed On Call Laptop checks (verified user access to FortiClient and systems saved on desktop).", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_138`, sectionId: `s_impl_9`, description: "Ensured branch had enough laptops for On Call setup.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_139`, sectionId: `s_impl_9`, description: "Connected laptop to Ethernet cable during first login; user successfully logged in with Ethernet connected.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_140`, sectionId: `s_impl_9`, description: "Create all shortcuts - ensure each staff member logs in to each system to ensure the shortcut is working.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_141`, sectionId: `s_impl_9`, description: "Ensured all users logged into the laptops and confirmed visibility of shortcuts and password saving.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_142`, sectionId: `s_impl_9`, description: "Created all system shortcuts and ensured each staff member logged into each system to verify shortcut functionality - if they want to we can send them the Edge links specifically.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_143`, sectionId: `s_impl_9`, description: "People Planner", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_144`, sectionId: `s_impl_9`, description: "Access Care Planning", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_145`, sectionId: `s_impl_9`, description: "Insight (Home and Recruitment Dashboard)", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_146`, sectionId: `s_impl_9`, description: "SmartRecruiters", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_147`, sectionId: `s_impl_9`, description: "Access WorkSpace", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_148`, sectionId: `s_impl_9`, description: "SOTI", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_149`, sectionId: `s_impl_9`, description: "Outlook & Teams", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_150`, sectionId: `s_impl_9`, description: "Check VPN.connects", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_151`, sectionId: `s_impl_9`, description: "First Advantage (Branch managers)", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_152`, sectionId: `s_impl_9`, description: "On call guide has been emailed to branch staff and a copy has been printed and put in the on-call laptop bag.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_153`, sectionId: `s_impl_10`, description: "Attended the branch to provide support for a minimum of 2 days.", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_154`, sectionId: `s_impl_10`, description: "Supported and mentored the branch team with completion of care and medication tasks.", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_155`, sectionId: `s_impl_10`, description: "Reviewed completed care and medication tasks.", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_156`, sectionId: `s_impl_10`, description: "Attached review of completed care and medication tasks to the Governance File.", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_157`, sectionId: `s_impl_10`, description: "Attached reviews of completed care plans and risk assessments to the Governance File.", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_158`, sectionId: `s_impl_10`, description: "Provided feedback on care plan reviews to Field Care Supervisors or equivalent where possible.", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_159`, sectionId: `s_impl_10`, description: "Supported and mentored branch team with ACP queries as appropriate.", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_160`, sectionId: `s_impl_10`, description: "Reviewed Branch Employee Record and Quality Team Group.", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_161`, sectionId: `s_impl_10`, description: "Added the Branch Information Page within the Branch Employee Record.", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_162`, sectionId: `s_impl_10`, description: "Created folders within the Documents tab inside the Branch Employee Record.", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_163`, sectionId: `s_impl_10`, description: "Reviewed Branch Employee Record and Branch Information Page.", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_164`, sectionId: `s_impl_10`, description: "Showed the manager and completed the Branch Visit Report on ACP.", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_165`, sectionId: `s_impl_10`, description: "Completed the compliance data comparison report.", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_166`, sectionId: `s_impl_10`, description: "Create individual accounts for Quality Team Members", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_167`, sectionId: `s_impl_10`, description: "Review all completed care and medication tasks", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_168`, sectionId: `s_impl_10`, description: "Attach reviews of all completed care and medication tasks to Governance File", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_169`, sectionId: `s_impl_10`, description: "Attach reviews of completed care plans and risk assessments to Governance File", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_170`, sectionId: `s_impl_10`, description: "Feedback care plan reviews to Field Care Supervisors/equivalent where possible", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_171`, sectionId: `s_impl_10`, description: "Review Service User and Care Worker Matrix", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_172`, sectionId: `s_impl_11`, description: "Personally called candidates who dropped out of the pipeline to re-engage them and understand barriers", responsible: "Recruitment", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_173`, sectionId: `s_impl_11`, description: "Maintained regular updates with stakeholders by attending weekly implementation calls.", responsible: "Recruitment", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_impl_174`, sectionId: `s_impl_11`, description: "Provided recruitment tracker updates and flagged any risks or delays during calls.", responsible: "Recruitment", dueDate: today, status: 'Not Started', notes: '' }
+                ]
+            },
+            'pre-go-live': {
+                sections: [ 
+                    { id: `s_go_1`, title: 'Pre Go Live', status: 'Not Started', isCollapsed: false, filter: '' }, 
+                    { id: `s_go_2`, title: 'Go Live Day', status: 'Not Started', isCollapsed: false, filter: '' },
+                    { id: `s_go_3`, title: 'Go Live Week', status: 'Not Started', isCollapsed: false, filter: '' },
+                    { id: `s_go_4`, title: 'Post Go Live', status: 'Not Started', isCollapsed: false, filter: '' }
+                ],
+                tasks: [
+                    { id: `t_go_1`, sectionId: `s_go_1`, description: "Sent Pre Go Live email on the last working day before Go Live, outlining completed milestones, outstanding milestones, and figures.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_2`, sectionId: `s_go_1`, description: "Pre Go Live rates call - BM/AM/RM/RD/OD/Rates team - final sign off, and rates have run through all rate set up and runs.", responsible: "Commercial Rates Team", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_3`, sectionId: `s_go_1`, description: "Confirmed rotas had been accepted and emailed to care professionals ahead of Go Live for disaster recovery.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_4`, sectionId: `s_go_1`, description: "Shared professional communications with the branch.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_5`, sectionId: `s_go_1`, description: "Configured On Call laptop and confirmed all required staff were able to log in using an Ethernet cable first.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_6`, sectionId: `s_go_1`, description: "Verified core care worker compliance (DBS, training if applicable, induction dates, TUPE dates if applicable, ID badge).", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_7`, sectionId: `s_go_1`, description: "Entered service user Next of Kin details and noted the number of missing NOK entries before Go Live.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_8`, sectionId: `s_go_1`, description: "Ensured no 24-hour system-generated availability was present.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_9`, sectionId: `s_go_1`, description: "Confirmed annual leave was entered correctly for Go Live and the following week.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_10`, sectionId: `s_go_1`, description: "Payroll runs attached to all employees (ops to ops run and care professionals to care team).", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_11`, sectionId: `s_go_1`, description: "Private packages set up correctly (checked setup, configuration, DIMS code).", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_12`, sectionId: `s_go_1`, description: "Confirmed EMS rules were correct on all funders (all set to 'Equals EMS Duration').", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_13`, sectionId: `s_go_1`, description: "Created, rostered, and templated the On Call service order.", responsible: "Branch Manager", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_14`, sectionId: `s_go_1`, description: "Entered care worker contact details in the correct fields (CCH-provided mobile in the Home field).", responsible: "Branch Manager", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_15`, sectionId: `s_go_1`, description: "Rostered On Call FCS duties correctly onto People Planner (internal office management).", responsible: "Branch Manager", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_16`, sectionId: `s_go_1`, description: "Encrypted all key safe numbers using Taxi Card and ensured none were entered directly into People Planner.", responsible: "Branch Manager", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_17`, sectionId: `s_go_1`, description: "Service priorities all checked and confirmed correct. Any care passports completed within the implementation period, service priorities updated.", responsible: "Branch Manager", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_18`, sectionId: `s_go_1`, description: "Entered all compliance data; searched files for any missing compliance and highlighted gaps.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_19`, sectionId: `s_go_1`, description: "Reviewed the Empty Care Task Report to ensure all visits had care tasks populated; tracked, communicated daily, and reported back on the Pre Go Live call.", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_20`, sectionId: `s_go_1`, description: "There are no medication placeholder tasks remaining.", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_21`, sectionId: `s_go_1`, description: "Entered correct level of detail for all PRN medications (reason for taking, maximum dosage, indications).", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_22`, sectionId: `s_go_1`, description: "Added all care and medication tasks; counted any missing tasks and confirmed Quality Lead provided feedback on level of personalisation.", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_23`, sectionId: `s_go_1`, description: "Contacted all care professionals working on Go Live for rota review and recorded number of those who were not contactable.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_24`, sectionId: `s_go_1`, description: "Confirmed all staff members were in the correct groups and had received login details, Including RM and RD.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_25`, sectionId: `s_go_1`, description: "Reinforced Feedback & Follow-up process with the branch for Go Live and refreshed them on Admin Activities before Quality Lead support began.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_26`, sectionId: `s_go_1`, description: "Reviewed full Care and Medication Task Activities", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_27`, sectionId: `s_go_1`, description: "Reviewed Empty Care Tasks report to ensure all visits have care tasks added", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_28`, sectionId: `s_go_1`, description: "Reviewed Nutrition RAG report on ACP", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_29`, sectionId: `s_go_1`, description: "Reviewed Repositioning RAG report on ACP", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_30`, sectionId: `s_go_1`, description: "Attached reviews of completed care plans and risk assessments to Governance File", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_31`, sectionId: `s_go_1`, description: "Feedback for care plan reviews to Field Care Supervisors/equivalent where possible given.", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_32`, sectionId: `s_go_1`, description: "NOK Portals requested have been set up.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_33`, sectionId: `s_go_1`, description: "BM and RM have attended the service order comparison call and confirmed all are correct.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_34`, sectionId: `s_go_2`, description: "Sent Go Live summary to BM, RM, RD, ISM, LISO, Payroll, HR, Quality Lead, Recruitment, Estates, IT Eastes, legal, Alma, Invoicing and the Implementation Support Team email.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_35`, sectionId: `s_go_2`, description: "Changed branch status to 'LIVE' on SharePoint.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_36`, sectionId: `s_go_2`, description: "Covered ACP reports (SU & CP Exports, Empty Care Tasks, RA Report, CP Report, Skin Integrity)", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_37`, sectionId: `s_go_2`, description: "Attend site on day of Go Live", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_38`, sectionId: `s_go_2`, description: "Identified service users with variable dose medication and confirmed that care professionals understood how to manage it.", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_39`, sectionId: `s_go_2`, description: "Checked for 'Closed - Not Complete' codes on the ACP Activity Dashboard; reviewed corresponding Feedback and Follow Up forms and flagged any process gaps.", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_40`, sectionId: `s_go_2`, description: "Admin activities have been reviewed and fed back to ops teams.", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_41`, sectionId: `s_go_2`, description: "Trained branch staff on Ad Hoc and Visit Expenses (Insight", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_42`, sectionId: `s_go_2`, description: "Ensured 100% of care professionals were device trained or that a mop-up training plan is in place via super users.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_43`, sectionId: `s_go_2`, description: "Supported the branch in managing ECM alerts.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_44`, sectionId: `s_go_2`, description: "Supported the branch with manually reconciling any visits.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_45`, sectionId: `s_go_2`, description: "Supported the branch in managing activities on ACP.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_46`, sectionId: `s_go_2`, description: "Upskilled branch staff on monitoring Live View within ACP.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_47`, sectionId: `s_go_2`, description: "Supported the branch in troubleshooting device issues using SOTI.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_48`, sectionId: `s_go_2`, description: "Ensured the branch was aware of and using the Daily and Weekly Checklists in Access Care Planning.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_49`, sectionId: `s_go_2`, description: "Confirmed E-Mar data populated correctly in Access Care Planning.", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_50`, sectionId: `s_go_2`, description: "(Merge, same pod only) Devices swapped over in Config to new branch if merge in same pod.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_51`, sectionId: `s_go_2`, description: "Checked PRNs to confirm the two-step process was followed by all care professionals; contacted staff where this was not the case.", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_52`, sectionId: `s_go_2`, description: "Checked folders within the Documents tab on branch employee records (including Team Meeting, Health and Safety, VOC analysis, Event analysis, and Engagement analysis).", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_53`, sectionId: `s_go_2`, description: "Updated SOTI View for branch staff to display 'Name', 'Phone Number', 'Battery Percentage', and 'Device Name'.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_54`, sectionId: `s_go_2`, description: "Checked double-up visits to ensure secondary carers had provided detailed visit notes.", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_55`, sectionId: `s_go_2`, description: "Checked folders within the Documents tab on branch employee records (including Team Meeting, Health and Safety, VOC analysis, Event analysis, and Engagement analysis).", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_56`, sectionId: `s_go_2`, description: "Reconciled all visits in the legacy system on the day of Go Live.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_57`, sectionId: `s_go_3`, description: "Delivered Insight training to all branch staff using live data (SU & CP compliance, ECM Compliance and visits on different day report).", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_58`, sectionId: `s_go_3`, description: "Audited completed risk assessments for new service users and provided feedback to assessors and managers; shared updates with the Implementation Team and during weekly update calls.", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_59`, sectionId: `s_go_3`, description: "Monitored ECM tracking to ensure Live View was being used and primary/secondary care professionals were logging in/out and completing all activities.", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_60`, sectionId: `s_go_3`, description: "Checked folders within the Documents tab on branch employee records (including Team Meeting, Health and Safety, VOC analysis, Event analysis, and Engagement analysis).", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_61`, sectionId: `s_go_3`, description: "Trained branch staff on how to run the Financial Summary report.", responsible: "Implementation Support Officer", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_62`, sectionId: `s_go_4`, description: "Insight Compliance Score as of today's date", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_63`, sectionId: `s_go_4`, description: "Review Empty Care Tasks report to ensure all visits have care tasks added", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_64`, sectionId: `s_go_4`, description: "Check visits have been completed on mobile devices - ACP live view and activities", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_65`, sectionId: `s_go_4`, description: "Support the Branch with reconciliation of care and medication activities within ACP", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_66`, sectionId: `s_go_4`, description: "Review the Visit report on ACP", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_67`, sectionId: `s_go_4`, description: "Support the Branch to send SOTI messages to Care Workers re visit notes", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_68`, sectionId: `s_go_4`, description: "Sample review completed visits for log in/out distances", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_69`, sectionId: `s_go_4`, description: "Review double handed calls", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_70`, sectionId: `s_go_4`, description: "Hold 1:1 sessions with Branch Staff on management of activities if required", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_71`, sectionId: `s_go_4`, description: "Establish how many SU have VDM and support Branch", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_72`, sectionId: `s_go_4`, description: "Review all Variable Dose Medication forms submitted with Branch Team", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_73`, sectionId: `s_go_4`, description: "Review all Financial Record forms submitted with Branch Team", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_74`, sectionId: `s_go_4`, description: "Support with Event Management if/where applicable", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_75`, sectionId: `s_go_4`, description: "Ensure Thank You message is sent to all Care Workers via SOTI from Branch", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_76`, sectionId: `s_go_4`, description: "Check for outstanding out of hours Admin activities", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_77`, sectionId: `s_go_4`, description: "Review all Insight Data", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_78`, sectionId: `s_go_4`, description: "Complete Adverse Code training with Branch Team", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_79`, sectionId: `s_go_4`, description: "Coach and monitor adverse code management with Branch Members", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_80`, sectionId: `s_go_4`, description: "Support the Branch with reconciliation of care and medication activities with", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_81`, sectionId: `s_go_4`, description: "Show the Branch Team the Meals and Repositioning Monitoring charts on ACP", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_82`, sectionId: `s_go_4`, description: "Show the Branch Team the MAR Sheets", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_83`, sectionId: `s_go_4`, description: "Hold 1:1 sessions with Branch Staff on the management of activities if require", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_84`, sectionId: `s_go_4`, description: "Review all Variable Dose Medication forms submitted", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_85`, sectionId: `s_go_4`, description: "Review all Financial Record forms submitted", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_86`, sectionId: `s_go_4`, description: "Support with Event Management if/where applicable", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_87`, sectionId: `s_go_4`, description: "Show the Manager the Branch Information Page again and how this should be updated", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_88`, sectionId: `s_go_4`, description: "Show the Manager the Branch Contingency Vulnerability Planning report on ACP", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_89`, sectionId: `s_go_4`, description: "Go through all ACP reports with Branch Manager to ensure understanding", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_90`, sectionId: `s_go_4`, description: "Attach reviews of completed care plans and risk assessments to Governance File", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_91`, sectionId: `s_go_4`, description: "Feedback care plan reviews to Field Care Supervisors/equivalent where possible", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_92`, sectionId: `s_go_4`, description: "Show the Manager the Business Contingency Local Information Schedule", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_93`, sectionId: `s_go_4`, description: "Additional checks for outstanding out of hours Admin activities", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_94`, sectionId: `s_go_4`, description: "Hold 1:1 sessions with Branch Staff on the management of activities as required", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_95`, sectionId: `s_go_4`, description: "Additional review of all Variable Dose Medication forms", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_96`, sectionId: `s_go_4`, description: "Additional review all Financial Record forms submitted", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_97`, sectionId: `s_go_4`, description: "Review the progress of reconciliation of care tasks within ACP", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_98`, sectionId: `s_go_4`, description: "Show the Manager the Care Plan Management Audit tool", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_99`, sectionId: `s_go_4`, description: "Complete Branch Visit Report on ACP", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' },
+                    { id: `t_go_100`, sectionId: `s_go_4`, description: "Flag any urgent concerns to Regional Manager and Regional Head of Quality", responsible: "Head of Quality", dueDate: today, status: 'Not Started', notes: '' }
+                ]
+            },
+            'embedding-period': {
+                sections: [
+                    { id: `s_emb_1`, title: 'Weekly Governance', status: 'Not Started', isCollapsed: false, filter: '' },
+                    { id: `s_emb_2`, title: 'Weekly System Checks', status: 'Not Started', isCollapsed: false, filter: '' },
+                    { id: `s_emb_3`, title: 'Learner Sign Off', status: 'Not Started', isCollapsed: false, filter: '' },
+                    { id: `s_emb_4`, title: 'Ops Handover', status: 'Not Started', isCollapsed: false, filter: '' }
+                ],
+                tasks: []
+            },
+            'finance-checks': {
+                sections: [
+                    { id: `s_fin_1`, title: 'Invoice Checks', status: 'Not Started', isCollapsed: false, filter: '' },
+                    { id: `s_fin_2`, title: 'Invoice Checks (Private)', status: 'Not Started', isCollapsed: false, filter: '' },
+                    { id: `s_fin_3`, title: 'Payroll Checks', status: 'Not Started', isCollapsed: false, filter: '' },
+                    { id: `s_fin_4`, title: 'Care Professional Export Checks', status: 'Not Started', isCollapsed: false, filter: '' },
+                    { id: `s_fin_5`, title: 'Visit Export Checks', status: 'Not Started', isCollapsed: false, filter: '' },
+                    { id: `s_fin_6`, title: 'MultiTab Export & Final Email', status: 'Not Started', isCollapsed: false, filter: '' }
+                ],
+                tasks: []
+            }
+        };
+
+        function formatDateToUK(isoDate) {
+            if (!isoDate || typeof isoDate !== 'string') return 'N/A';
+            const parts = isoDate.split('-');
+            if (parts.length !== 3) return isoDate; // Return original if not in format
+            const [y, m, d] = parts;
+            return `${d}/${m}/${y}`;
+        }
+        
+        function sanitizeForHtml(str) {
+            if (typeof str !== 'string') return '';
+            return str.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+
+        // =================================================================================
+        // CHARTING LOGIC
+        // =================================================================================
+        function calculateOverallProgress() {
+            const checklistKeys = ['pre-implementation', 'implementation', 'pre-go-live', 'embedding-period', 'finance-checks'];
+            let totalTasks = 0;
+            let completedTasks = 0;
+
+            checklistKeys.forEach(key => {
+                const pageData = checklistData[key];
+                if (pageData && pageData.tasks) {
+                    totalTasks += pageData.tasks.length;
+                    completedTasks += pageData.tasks.filter(t => t.status === 'Completed' || t.status === 'N/A').length;
+                }
+            });
+
+            if (totalTasks === 0) return 0;
+            return Math.round((completedTasks / totalTasks) * 100);
+        }
+        
+        function calculatePageProgress() {
+            const checklistPages = [
+                { id: 'pre-implementation', name: 'Pre Implementation' },
+                { id: 'implementation', name: 'Implementation' },
+                { id: 'pre-go-live', name: 'Pre & Go Live' },
+                { id: 'embedding-period', name: 'Embedding Period' },
+                { id: 'finance-checks', name: 'Finance Checks' }
+            ];
+            
+            return checklistPages.map(page => {
+                const pageData = checklistData[page.id];
+                let progress = 0;
+                if(pageData && pageData.tasks && pageData.tasks.length > 0) {
+                    const completed = pageData.tasks.filter(t => t.status === 'Completed' || t.status === 'N/A').length;
+                    progress = Math.round((completed / pageData.tasks.length) * 100);
+                }
+                return { name: page.name, progress: progress };
+            });
+        }
+
+
+        function drawSpeedometer(percentage) {
+            const canvas = document.getElementById('speedometer-chart');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const { width, height } = canvas;
+            const centerX = width / 2;
+            const centerY = height / 2 + 10; // Adjusted for better vertical centering
+            const radius = Math.min(width, height) / 2 - 30;
+
+            ctx.clearRect(0, 0, width, height);
+
+            const segments = [
+                { start: 0, end: 25, color: '#ef4444' },   
+                { start: 25, end: 50, color: '#f97316' },  
+                { start: 50, end: 95, color: '#facc15' },  
+                { start: 95, end: 100, color: '#22c55e' } 
+            ];
+
+            ctx.lineWidth = 25;
+            segments.forEach(seg => {
+                ctx.beginPath();
+                ctx.strokeStyle = seg.color;
+                const startAngle = (Math.PI / 100) * seg.start + Math.PI;
+                const endAngle = (Math.PI / 100) * seg.end + Math.PI;
+                ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+                ctx.stroke();
+            });
+
+            const needleAngle = (Math.PI / 100) * percentage + Math.PI;
+            ctx.beginPath();
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 4;
+            ctx.moveTo(centerX, centerY);
+            ctx.lineTo(centerX + Math.cos(needleAngle) * (radius - 15), centerY + Math.sin(needleAngle) * (radius - 15));
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.fillStyle = '#334155';
+            ctx.arc(centerX, centerY, 8, 0, 2 * Math.PI);
+            ctx.fill();
+
+            ctx.fillStyle = '#015046';
+            ctx.font = 'bold 36px Inter, sans-serif'; // Smaller font size
+            ctx.textAlign = 'center';
+            ctx.fillText(`${percentage}%`, centerX, centerY + 45); // Positioned below
+        }
+
+        function drawBarChart(progressData) {
+            const canvas = document.getElementById('progress-bar-chart');
+            if(!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const { width, height } = canvas;
+            
+            ctx.clearRect(0, 0, width, height);
+            
+            const barHeight = 25;
+            const barMargin = 20;
+            const topMargin = 20; // Adjusted top margin
+            const leftMargin = 150; 
+            const rightMargin = 50; 
+            
+            progressData.forEach((item, index) => {
+                const y = topMargin + index * (barHeight + barMargin);
+                
+                // Draw Label
+                ctx.fillStyle = '#334155';
+                ctx.font = '600 14px Inter, sans-serif';
+                ctx.textAlign = 'right';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(item.name, leftMargin - 15, y + barHeight / 2);
+                
+                // Determine bar color
+                let barColor = '#ef4444'; // Red
+                if (item.progress > 95) barColor = '#22c55e'; // Green
+                else if (item.progress > 50) barColor = '#facc15'; // Yellow
+                else if (item.progress > 25) barColor = '#f97316'; // Orange
+                
+                // Draw background bar
+                ctx.fillStyle = '#e5e7eb'; // light gray
+                ctx.beginPath();
+                ctx.roundRect(leftMargin, y, width - leftMargin - rightMargin, barHeight, [barHeight/2]);
+                ctx.fill();
+                
+                // Draw progress bar
+                if (item.progress > 0) {
+                    const barWidth = ((width - leftMargin - rightMargin) * item.progress) / 100;
+                    ctx.fillStyle = barColor;
+                    ctx.beginPath();
+                    ctx.roundRect(leftMargin, y, barWidth, barHeight, [barHeight/2]);
+                    ctx.fill();
+                }
+                
+                // Draw Percentage Text
+                ctx.fillStyle = '#334155';
+                ctx.font = 'bold 14px Inter, sans-serif';
+                ctx.textAlign = 'left';
+                ctx.fillText(`${item.progress}%`, width - rightMargin + 10, y + barHeight / 2);
+            });
+        }
+
+
+        // =================================================================================
+        // PAGE TEMPLATES
+        // =================================================================================
+        const checklistPageTemplate = (pageTitle) => `
+            <header class="glass-card p-6 mb-8">
+                <div class="flex flex-col sm:flex-row justify-between sm:items-center">
+                    <div class="mb-4 sm:mb-0"><h1 class="text-3xl font-bold text-slate-800">${pageTitle}</h1><p class="text-lg text-gray-700 mt-1">Project: ${appState.projectName} / OpCo: ${appState.opCoName}</p></div>
+                    <div class="text-left sm:text-right"><p class="text-sm font-medium text-gray-600">Go-Live Date</p><p class="text-xl font-semibold" style="color: var(--primary-color);">${formatDateToUK(appState.goLiveDate)}</p></div>
+                </div>
+                <div class="mt-4"><p class="text-sm font-medium text-gray-600 mb-1">Overall Progress</p><div class="w-full bg-gray-200/50 rounded-full h-4 border border-gray-300/50"><div id="progress-bar" class="h-4 rounded-full transition-all duration-500" style="width: 0%;"></div></div><p id="progress-text" class="text-right text-sm mt-1 text-gray-600">0% Complete</p></div>
+            </header>
+            <main id="checklist-main" class="pb-32"></main>`;
+
+        const pageTemplates = {
+            dashboard: () => `
+                <header class="glass-card p-6 mb-8 flex items-center justify-between">
+                    <div><h1 class="text-3xl font-bold text-slate-800">Dashboard</h1><p class="text-lg text-gray-700 mt-1">Project Overview</p></div>
+                    <div class="text-6xl opacity-20" style="color: var(--primary-color);"><i class="fas fa-tachometer-alt"></i></div>
+                </header>
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-8">
+                    <div class="glass-card p-6 text-center dashboard-card">
+                        <i class="fas fa-clock text-4xl mb-3" style="color: var(--primary-color);"></i>
+                        <h3 class="text-lg font-semibold text-slate-700">Volume of Hours</h3>
+                        <p class="text-4xl font-bold mt-2" style="color: var(--primary-color-light);">${appState.volumeOfHours}</p>
+                    </div>
+                    <div class="glass-card p-6 text-center dashboard-card">
+                        <i class="fas fa-users text-4xl mb-3" style="color: var(--primary-color);"></i>
+                        <h3 class="text-lg font-semibold text-slate-700">Care Professionals</h3>
+                        <p class="text-4xl font-bold mt-2" style="color: var(--primary-color-light);">${appState.careProfessionalVolumes}</p>
+                    </div>
+                    <div class="glass-card p-6 text-center dashboard-card">
+                        <i class="fas fa-user-tie text-4xl mb-3" style="color: var(--primary-color);"></i>
+                        <h3 class="text-lg font-semibold text-slate-700">Operational Staff</h3>
+                        <p class="text-4xl font-bold mt-2" style="color: var(--primary-color-light);">${appState.operationalStaffVolumes}</p>
+                    </div>
+                    <div class="glass-card p-6 text-center dashboard-card">
+                        <i class="fas fa-hospital-user text-4xl mb-3" style="color: var(--primary-color);"></i>
+                        <h3 class="text-lg font-semibold text-slate-700">Social Services SU</h3>
+                        <p class="text-4xl font-bold mt-2" style="color: var(--primary-color-light);">${appState.ssUserVolumes}</p>
+                    </div>
+                    <div class="glass-card p-6 text-center dashboard-card">
+                        <i class="fas fa-user-shield text-4xl mb-3" style="color: var(--primary-color);"></i>
+                        <h3 class="text-lg font-semibold text-slate-700">Private SU</h3>
+                        <p class="text-4xl font-bold mt-2" style="color: var(--primary-color-light);">${appState.privateUserVolumes}</p>
+                    </div>
+                </div>
+                <div class="glass-card p-6">
+                    <h2 class="text-2xl font-semibold text-slate-700 mb-4">Charts</h2>
+                    <div class="flex flex-wrap gap-6 items-center">
+                         <div class="w-full md:w-1/3 lg:w-1/4">
+                            <canvas id="speedometer-chart" width="250" height="250"></canvas>
+                         </div>
+                         <div class="w-full md:w-1/2 lg:w-2/3 flex-grow">
+                            <canvas id="progress-bar-chart" height="250"></canvas>
+                         </div>
+                    </div>
+                </div>`,
+            'kick-off-call': `
+                <header class="glass-card p-6 mb-8 flex items-center justify-between">
+                    <div><h1 class="text-3xl font-bold text-slate-800">Kick Off Call</h1><p class="text-lg text-gray-700 mt-1">Key discussion points for the initial project kick-off.</p></div>
+                    <div class="text-6xl opacity-20" style="color: var(--primary-color);"><i class="fas fa-rocket"></i></div>
+                </header>
+                <main id="kick-off-main">
+                    <section class="glass-card p-6 mb-6">
+                        <div class="flex justify-between items-center mb-4"><h2 class="text-2xl font-semibold text-slate-700">Information Gather</h2></div>
+                        <div id="agenda-list" class="space-y-4"></div>
+                    </section>
+                </main>`,
+            'update-call': `
+                <header class="glass-card p-6 mb-8 flex items-center justify-between">
+                    <div><h1 class="text-3xl font-bold text-slate-800">Update Call</h1><p class="text-lg text-gray-700 mt-1">Weekly progress and action tracking.</p></div>
+                    <div class="text-6xl opacity-20" style="color: var(--primary-color);"><i class="fas fa-sync-alt"></i></div>
+                </header>
+                <main id="update-call-main" class="pb-32"></main>
+                `,
+            'rates-overview': `<header class="glass-card p-6 mb-8 flex items-center justify-between"><div><h1 class="text-3xl font-bold text-slate-800">Rates Overview</h1><p class="text-lg text-gray-700 mt-1">This page is under construction.</p></div><div class="text-6xl opacity-20" style="color: var(--primary-color);"><i class="fas fa-file-pen"></i></div></header>`,
+            'settings': `<header class="glass-card p-6 mb-8 flex items-center justify-between"><div><h1 class="text-3xl font-bold text-slate-800">Settings</h1><p class="text-lg text-gray-700 mt-1">Application Settings</p></div><div class="text-6xl opacity-20" style="color: var(--primary-color);"><i class="fas fa-cog"></i></div></header><div class="glass-card p-6"><h2 class="text-2xl font-semibold text-slate-700">Configuration</h2><p class="mt-2 text-gray-600">This section is under construction.</p></div>`,
+            'pre-go-live': () => checklistPageTemplate('Pre & Go Live'),
+            'pre-implementation': () => checklistPageTemplate('Pre Implementation'),
+            'implementation': () => checklistPageTemplate('Implementation'),
+            'embedding-period': () => checklistPageTemplate('Embedding Period'),
+            'finance-checks': () => checklistPageTemplate('Finance Checks')
+        };
+
+        // =================================================================================
+        // ROUTING AND PAGE DISPLAY LOGIC
+        // =================================================================================
+        function showPage(pageId, event) {
+            if (event) {
+                event.preventDefault();
+            }
+            const mainContentArea = document.getElementById('main-content-area');
+            const floatingTaskBar = document.getElementById('floating-task-bar');
+            const addTaskBtn = document.getElementById('add-task-btn');
+            const copyTableBtn = document.getElementById('copy-table-btn');
+            
+            addTaskBtn.classList.add('hidden');
+            copyTableBtn.classList.add('hidden');
+
+            let template = pageTemplates[pageId];
+            mainContentArea.innerHTML = typeof template === 'function' ? template() : template || `<p>Page not found</p>`;
+            document.querySelectorAll('#sidebar-nav .nav-link').forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('onclick').includes(`'${pageId}'`)) link.classList.add('active');
+            });
+
+            if (pageId === 'dashboard') {
+                const cards = document.querySelectorAll('.dashboard-card');
+                cards.forEach((card, index) => {
+                    card.style.animationDelay = `${index * 100}ms`;
+                });
+                // Draw charts after the template is rendered
+                const overallProgress = calculateOverallProgress();
+                drawSpeedometer(overallProgress);
+                const pageProgress = calculatePageProgress();
+                drawBarChart(pageProgress);
+            }
+
+            const checklistPages = ['pre-implementation', 'implementation', 'pre-go-live', 'embedding-period', 'finance-checks'];
+            if (checklistPages.includes(pageId)) {
+                addTaskBtn.classList.remove('hidden'); 
+                floatingTaskBar.classList.remove('hidden'); 
+                checklistApp.currentPageId = pageId;
+                checklistApp.applyGlobalFilter('none', true);
+                checklistApp.render();
+            } else {
+                floatingTaskBar.classList.add('hidden'); 
+            }
+            
+            if (pageId === 'kick-off-call') { agendaApp.init(); agendaApp.render(); }
+            if (pageId === 'update-call') {
+                copyTableBtn.classList.remove('hidden'); 
+                updateCallApp.init(); 
+                updateCallApp.render(); 
+            }
+        }
+
+        // =================================================================================
+        // CHECKLIST APP LOGIC (Used by checklist-based pages)
+        // =================================================================================
+        const checklistApp = {
+            currentPageId: null,
+            activeGlobalFilter: { type: 'none', searchTerm: '' }, 
+            draggedTaskId: null,
+            searchTimeout: null,
+            responsibleTitles: [ 'Implementation Support Officer', 'Lead Implementation Support Officer', 'Head of Implementation', 'Branch Manager', 'Area Manager', 'Regional Manager', 'Regional Director', 'Operations Director', 'Recruitment', 'Finance Business Partner', 'Commercial Rates Team', 'Head of Quality', 'HR Business Partner', 'Estates', 'IT Estates', 'Payroll', 'Accounts Receivable Manager', 'Commercial Lead', 'Legal', 'Regional Training Manager', 'Head of Market Intelligence', 'Technical Services' ],
+            
+            getCurrentState() {
+                if (!this.currentPageId || !checklistData[this.currentPageId]) {
+                    return { sections: [], tasks: [] };
+                }
+                return checklistData[this.currentPageId];
+            },
+            
+            getFilteredTasks() {
+                const state = this.getCurrentState();
+                let tasks = [...state.tasks];
+                const { type, searchTerm } = this.activeGlobalFilter;
+
+                if (type === 'notStarted') {
+                    return tasks.filter(t => t.status === 'Not Started');
+                }
+                if (type === 'overdue') {
+                    const now = new Date();
+                    now.setHours(0, 0, 0, 0); 
+                    return tasks.filter(t => {
+                        const dueDate = new Date(t.dueDate);
+                        return dueDate < now && t.status !== 'Completed' && t.status !== 'N/A';
+                    });
+                }
+                if (type === 'onTrack') {
+                    return tasks.filter(t => t.status === 'On Track');
+                }
+                if (type === 'completed') {
+                    return tasks.filter(t => t.status === 'Completed' || t.status === 'N/A');
+                }
+                if (type === 'search' && searchTerm) {
+                    return tasks.filter(t => t.description.toLowerCase().includes(searchTerm));
+                }
+                return tasks; 
+            },
+
+            render() { 
+                const mainContent = document.getElementById('checklist-main'); 
+                if (!mainContent) return; 
+                mainContent.innerHTML = ''; 
+                const state = this.getCurrentState();
+                const allFilteredTasks = this.getFilteredTasks();
+
+                state.sections.forEach(section => { 
+                    const sectionEl = document.createElement('section'); 
+                    sectionEl.id = section.id; 
+                    sectionEl.className = 'glass-card p-6 mb-6'; 
+                    
+                    const tasksForSection = allFilteredTasks.filter(t => t.sectionId === section.id); 
+                    const finalTasksForSection = section.filter 
+                        ? tasksForSection.filter(t => t.responsible.toLowerCase().includes(section.filter.toLowerCase())) 
+                        : tasksForSection;
+
+                    if (this.activeGlobalFilter.type === 'none' || finalTasksForSection.length > 0) {
+                        sectionEl.innerHTML = this.createSectionHTML(section, finalTasksForSection); 
+                        mainContent.appendChild(sectionEl); 
+                    }
+                }); 
+                this.updateProgressBar(); 
+                this.updateFilterBarUI();
+            },
+            
+            createSectionHTML(section, filteredTasks) {
+                const displayStatus = section.status === 'On Track' ? 'In Progress' : section.status;
+                return `<div class="flex justify-between items-center cursor-pointer" onclick="checklistApp.toggleSection('${section.id}')"><h2 class="text-2xl font-semibold text-slate-700">${section.title}</h2><div class="flex items-center space-x-4"><span class="text-sm font-medium text-gray-600">Status: ${displayStatus}</span>${this.getSectionStatusIcon(section.status)}<i onclick="event.stopPropagation(); openConfirmModal('deleteSection', '${section.id}', 'this section')" class="fas fa-trash-alt text-gray-400 hover:text-red-500 transition-colors"></i><i id="icon-${section.id}" class="fas fa-chevron-down text-xl text-gray-600 transition-transform duration-300 ${section.isCollapsed ? '-rotate-90' : ''}"></i></div></div><div id="content-${section.id}" class="collapsible-content mt-4 ${section.isCollapsed ? 'hidden' : ''}">${this.createTableHTML(filteredTasks, section.id)}<div class="mt-4 flex justify-between items-center"><div class="w-1/3">${this.createSectionProgressHTML(filteredTasks)}</div></div></div>`; 
+            },
+            createTableHTML(tasks, sectionId) {
+                if (tasks.length === 0) return '<p class="text-gray-600 text-center py-8">No tasks match the current filter.</p>';
+                let rowsHTML = tasks.map(task => {
+                    const rag = this.getRagStatus(task);
+                    const isCompleted = task.status === 'Completed' || task.status === 'N/A';
+                    const responsibleOptions = this.responsibleTitles.map(title => `<option value="${title}" ${task.responsible === title ? 'selected' : ''}>${title}</option>`).join('');
+
+                    return `<tr id="${task.id}" draggable="true" ondragstart="checklistApp.handleDragStart(event, '${task.id}')" ondragend="checklistApp.handleDragEnd(event)" ondragover="checklistApp.handleDragOver(event)" ondragleave="checklistApp.handleDragLeave(event)" ondrop="checklistApp.handleDrop(event, '${task.id}')" class="hover:bg-white/30 transition-all duration-150">
+                                <td class="px-2 py-4 text-center cursor-move"><i class="fas fa-grip-vertical text-gray-400"></i></td>
+                                <td class="px-6 py-4 text-sm font-medium text-gray-800 ${isCompleted ? 'line-through text-gray-500' : ''}">${task.description}</td>
+                                <td class="px-6 py-4 text-sm">
+                                    <select onchange="checklistApp.updateTaskResponsible('${task.id}', this.value)" class="rounded-md border-gray-300/70 shadow-sm w-full form-input h-auto whitespace-normal" style="background-color: transparent;">
+                                        <option value="" disabled>Select...</option>
+                                        ${responsibleOptions}
+                                    </select>
+                                </td>
+                                <td class="px-6 py-4 text-sm">
+                                    <input type="date" value="${task.dueDate}" onchange="checklistApp.updateTaskDueDate('${task.id}', this.value)" class="rounded-md border-gray-300/70 shadow-sm w-full form-input" style="background-color: transparent;">
+                                </td>
+                                <td class="px-6 py-4 text-sm">
+                                    <select onchange="checklistApp.updateTaskStatus('${task.id}', this.value)" class="rounded-md border-gray-300/70 shadow-sm w-full form-input h-auto whitespace-normal" style="background-color: transparent;">
+                                        <option value="Not Started" ${task.status === 'Not Started' ? 'selected' : ''}>Not Started</option>
+                                        <option value="On Track" ${task.status === 'On Track' ? 'selected' : ''}>On Track</option>
+                                        <option value="Completed" ${task.status === 'Completed' ? 'selected' : ''}>Completed</option>
+                                        <option value="N/A" ${task.status === 'N/A' ? 'selected' : ''}>N/A</option>
+                                    </select>
+                                </td>
+                                <td class="px-6 py-4 text-center"><span class="h-4 w-4 rounded-full inline-block ${rag.css}"></span></td>
+                                <td class="px-6 py-4 text-sm"><div onclick="openNotesModal('${task.id}')" class="cursor-pointer hover:underline whitespace-normal">${task.notes || 'Click to add...'}</div></td>
+                                <td class="px-6 py-4 text-center"><i onclick="openConfirmModal('deleteTask', '${task.id}', 'this task')" class="fas fa-trash-alt text-gray-400 hover:text-red-500 cursor-pointer transition-colors"></i></td>
+                            </tr>`;
+                }).join('');
+                return `<div class="overflow-x-auto mb-4"><table class="min-w-full divide-y divide-gray-200/50 table-fixed-layout"><thead class="bg-transparent"><tr><th class="px-2 py-3 w-10"></th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-2/5"><span class="flex items-center">Task Description</span></th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6"><span class="flex items-center">Responsible <i onclick="openFilterModal('${sectionId}')" class="fas fa-filter ml-2 cursor-pointer"></i></span></th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6"><span class="flex items-center">Due Date</span></th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">Status</th><th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">RAG</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/5">Notes</th><th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider"></th></tr></thead><tbody class="divide-y divide-gray-200/50">${rowsHTML}</tbody></table></div>`;
+            },
+            addTask(sectionId, formData) { const state = this.getCurrentState(); state.tasks.push({ id: `t_${Date.now()}`, sectionId, description: formData.get('description'), responsible: formData.get('responsible'), dueDate: formData.get('dueDate'), status: 'Not Started', notes: '' }); this.updateSectionStatus(sectionId); this.render(); },
+            deleteTask(taskId) { const state = this.getCurrentState(); const task = state.tasks.find(t => t.id === taskId); if(task) { const sectionId = task.sectionId; state.tasks = state.tasks.filter(t => t.id !== taskId); this.updateSectionStatus(sectionId); this.render(); }},
+            updateTaskStatus(taskId, newStatus) { const state = this.getCurrentState(); const task = state.tasks.find(t => t.id === taskId); if(task) { task.status = newStatus; this.updateSectionStatus(task.sectionId); } this.render(); },
+            updateTaskResponsible(taskId, newResponsible) { const state = this.getCurrentState(); const task = state.tasks.find(t => t.id === taskId); if(task) { task.responsible = newResponsible; } this.render(); },
+            updateTaskDueDate(taskId, newDueDate) { const state = this.getCurrentState(); const task = state.tasks.find(t => t.id === taskId); if(task) { task.dueDate = newDueDate; } this.render(); },
+            updateTaskNotes(taskId, newNotes) { const state = this.getCurrentState(); const task = state.tasks.find(t => t.id === taskId); if(task) task.notes = newNotes; },
+            addSection(title) { const state = this.getCurrentState(); if(!title) return; state.sections.push({ id: `s_${Date.now()}`, title, status: 'Not Started', isCollapsed: false, filter: '' }); this.render(); },
+            deleteSection(sectionId) { const state = this.getCurrentState(); state.sections = state.sections.filter(s => s.id !== sectionId); state.tasks = state.tasks.filter(t => t.sectionId !== sectionId); this.render(); },
+            toggleSection(sectionId) { const state = this.getCurrentState(); const section = state.sections.find(s => s.id === sectionId); if(section) section.isCollapsed = !section.isCollapsed; const contentDiv = document.getElementById(`content-${sectionId}`); const icon = document.getElementById(`icon-${sectionId}`); if(contentDiv && icon) { contentDiv.classList.toggle('hidden'); icon.classList.toggle('-rotate-90'); } },
+            sortTasks(sectionId, key) { const state = this.getCurrentState(); const tasksToSort = state.tasks.filter(t => t.sectionId === sectionId); tasksToSort.sort((a,b) => a[key].localeCompare(b[key])); const otherTasks = state.tasks.filter(t => t.sectionId !== sectionId); state.tasks = [...otherTasks, ...tasksToSort]; this.render(); },
+            applyFilter(sectionId, responsibleName) {
+                const state = this.getCurrentState();
+                const section = state.sections.find(s => s.id === sectionId);
+                if (!section) return;
+                
+                section.filter = responsibleName || ''; 
+                this.render();
+                closeModal();
+            },
+            handleDragStart(e, taskId) { this.draggedTaskId = taskId; e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', taskId); setTimeout(() => { e.target.classList.add('dragging'); }, 0); },
+            handleDragEnd(e) { e.target.classList.remove('dragging'); document.querySelectorAll('.drop-indicator-above, .drop-indicator-below').forEach(el => { el.classList.remove('drop-indicator-above', 'drop-indicator-below'); }); },
+            handleDragOver(e) { e.preventDefault(); const targetRow = e.target.closest('tr'); if (!targetRow || targetRow.id === this.draggedTaskId) return; document.querySelectorAll('.drop-indicator-above, .drop-indicator-below').forEach(el => { el.classList.remove('drop-indicator-above', 'drop-indicator-below'); }); const rect = targetRow.getBoundingClientRect(); const halfway = rect.top + rect.height / 2; if (e.clientY < halfway) { targetRow.classList.add('drop-indicator-above'); } else { targetRow.classList.add('drop-indicator-below'); } },
+            handleDragLeave(e) { const targetRow = e.target.closest('tr'); if(targetRow) { targetRow.classList.remove('drop-indicator-above', 'drop-indicator-below'); } },
+            handleDrop(e, targetTaskId) { e.preventDefault(); const state = this.getCurrentState(); const fromIndex = state.tasks.findIndex(task => task.id === this.draggedTaskId); let toIndex = state.tasks.findIndex(task => task.id === targetTaskId); if (fromIndex === -1 || toIndex === -1) return; const dropTarget = e.target.closest('tr'); const dropAbove = dropTarget.classList.contains('drop-indicator-above'); const [item] = state.tasks.splice(fromIndex, 1); if (fromIndex < toIndex) { toIndex--; } const finalIndex = dropAbove ? toIndex : toIndex + 1; state.tasks.splice(finalIndex, 0, item); this.draggedTaskId = null; this.render(); },
+            updateSectionStatus(sectionId) { const state = this.getCurrentState(); const section = state.sections.find(s => s.id === sectionId); if(!section) return; const tasks = state.tasks.filter(t => t.sectionId === sectionId); if(tasks.length === 0) { section.status = 'Not Started'; return; } if(tasks.every(t => t.status === 'Completed' || t.status === 'N/A')) { section.status = 'Completed'; return; } if(tasks.some(t => t.status !== 'Not Started')) { section.status = 'On Track'; return; } section.status = 'Not Started'; },
+            getSectionStatusIcon(status) { if(status === 'On Track' || status === 'In Progress') return `<i class="fas fa-spinner fa-spin text-lg" style="color: var(--primary-color-light);"></i>`; if(status === 'Completed') return `<i class="fas fa-check-circle text-lg text-green-500"></i>`; return `<i class="far fa-circle text-lg text-gray-400"></i>`; },
+            createSectionProgressHTML(tasks) {
+                const state = this.getCurrentState();
+                if (!tasks.length) return '';
+                const sectionId = tasks[0].sectionId;
+                const sectionTasks = state.tasks.filter(t => t.sectionId === sectionId);
+                if (sectionTasks.length === 0) return '';
+                const pTasks = sectionTasks.filter(t => t.status === 'Completed' || t.status === 'N/A').length;
+                const prog = Math.round((pTasks / sectionTasks.length) * 100);
+                
+                let progressBarColor = '';
+                if (prog >= 95) {
+                    progressBarColor = '#22c55e'; // Green
+                } else if (prog > 50) {
+                    progressBarColor = '#facc15'; // Yellow
+                } else if (prog > 25) {
+                    progressBarColor = '#f97316'; // Orange
+                } else {
+                    progressBarColor = '#ef4444'; // Red
+                }
+                
+                return `<div><div class="w-full bg-gray-200/50 rounded-full h-2.5 border border-gray-300/50"><div class="h-2.5 rounded-full" style="width: ${prog}%; background-color: ${progressBarColor};"></div></div><p class="text-xs text-gray-600 mt-1">Section Progress: ${prog}%</p></div>`;
+            },
+            getRagStatus(task) { const due = new Date(task.dueDate); const currentDate = new Date(); if(isNaN(due)) return {css: 'bg-gray-400'}; if(due < currentDate && task.status === 'Not Started') return {css: 'bg-red-500 rag-glow-red'}; switch(task.status) { case 'Completed': return {css: 'bg-green-500 rag-glow-green'}; case 'On Track': return {css: 'bg-amber-500 rag-glow-amber'}; case 'Not Started': return {css: 'bg-gray-400'}; default: return {css: 'bg-gray-400'}; } },
+            updateProgressBar() {
+                const pBar = document.getElementById('progress-bar');
+                const pText = document.getElementById('progress-text');
+                if (!pBar || !pText) return;
+                const state = this.getCurrentState();
+                const total = state.tasks.length;
+                if (total === 0) {
+                    pBar.style.width = '0%';
+                    pBar.style.backgroundColor = '#ef4444'; 
+                    pText.innerText = '0% Complete';
+                    return;
+                }
+
+                const progTasks = state.tasks.filter(t => t.status === 'Completed' || t.status === 'N/A').length;
+                const prog = Math.round((progTasks / total) * 100);
+
+                let progressBarColor = '';
+                if (prog >= 95) {
+                    progressBarColor = '#22c55e'; // Green
+                } else if (prog > 50) {
+                    progressBarColor = '#facc15'; // Yellow
+                } else if (prog > 25) {
+                    progressBarColor = '#f97316'; // Orange
+                } else {
+                    progressBarColor = '#ef4444'; // Red
+                }
+
+                pBar.style.width = `${prog}%`;
+                pBar.style.backgroundColor = progressBarColor;
+                pText.innerText = `${prog}% Complete`;
+            },
+            
+            applyGlobalFilter(filterType, isPageChange = false) {
+                if (!isPageChange && this.activeGlobalFilter.type === filterType) {
+                    this.activeGlobalFilter.type = 'none';
+                } else {
+                    this.activeGlobalFilter.type = filterType;
+                }
+                this.activeGlobalFilter.searchTerm = '';
+                const searchInput = document.getElementById('task-search-input');
+                if (searchInput) searchInput.value = '';
+                this.render();
+            },
+
+            handleSearch(event) {
+                const searchTerm = event.target.value.toLowerCase();
+                this.activeGlobalFilter.type = 'search';
+                this.activeGlobalFilter.searchTerm = searchTerm;
+                if(this.searchTimeout) clearTimeout(this.searchTimeout);
+                this.searchTimeout = setTimeout(() => {
+                    this.render();
+                }, 300);
+            },
+
+            toggleAllSections() {
+                const state = this.getCurrentState();
+                if (state.sections.length === 0) return;
+                const collapsedCount = state.sections.filter(s => s.isCollapsed).length;
+                const shouldCollapse = collapsedCount < (state.sections.length / 2);
+                state.sections.forEach(s => s.isCollapsed = shouldCollapse);
+                this.render();
+            },
+            
+            updateFilterBarUI() {
+                const filterType = this.activeGlobalFilter.type;
+                document.querySelectorAll('#floating-task-bar .task-bar-btn').forEach(btn => {
+                    if (btn.dataset.filter === filterType) {
+                        btn.classList.add('active');
+                    } else {
+                        btn.classList.remove('active');
+                    }
+                });
+                
+                const searchInput = document.getElementById('task-search-input');
+                if (filterType === 'search' && this.activeGlobalFilter.searchTerm) {
+                    searchInput.parentElement.querySelector('.fa-search').classList.add('text-sky-500');
+                } else {
+                    searchInput.parentElement.querySelector('.fa-search').classList.remove('text-sky-500');
+                }
+            }
+        };
+
+        // =================================================================================
+        // KICK-OFF CALL APP LOGIC
+        // =================================================================================
+        const kickOffGroups = [
+            ['Branch', 'OpCo', 'Region', 'Branch Address', 'Attendees', 'Weekly Governance call', 'Taxonomy/MINT requested', 'Go Live Date', 'Implementation Duration (weeks)', 'Implementation Type', 'Outgoing Provider Name', 'C-Number'],
+            ['Volume of Hours', 'Service User (SS) Volumes', 'Service User (Private) Volumes', 'Care Professional Volumes', 'Operational staff Volumes'],
+            ['ELI document', 'Consultations with Staff - Ops & Care Professionals', 'TUPE Meetings with Care Professionals', 'Care Professional transferring out', 'Operational Staff transferring out', 'Service User transferring out'],
+            ['ECM Contractual requirement', 'Invoice rate and set up (any new invoice runs?)', 'Private Service Users', 'Pay rate and set up (any new payroll runs?)', 'Travel rate and set up', 'Shift and Waking night set up (including any breaks in shift)', 'On Call set up', 'Bespoke Pay/Invoice set up', 'Bespoke LA reports'],
+            ['1st Payroll Check Due Date', '1st Invoice Check Due Date', '2nd Payroll Check Due Date', '2nd Invoice Check Due Date'],
+            ['Estates order', 'IT Estates order (Thin Clients', 'Printer', 'Phones)', 'IT Equipment order (Devices', 'Tablets', 'Laptops)', 'ECS Connectivity'],
+            ['System Training (Remote/Onsite)', 'Care Professional Training', 'Quality Team informed', 'Recruitment requirements', 'Deliverables and Social Values']
+        ];
+        
+        const allKickOffTitles = kickOffGroups.flat();
+
+        const agendaApp = {
+            state: { points: [] },
+            init() {
+                 const valueMap = {
+                    'Volume of Hours': appState.volumeOfHours,
+                    'Implementation Duration (weeks)': appState.implementationDuration,
+                    'Service User (SS) Volumes': appState.ssUserVolumes,
+                    'Service User (Private) Volumes': appState.privateUserVolumes,
+                    'Care Professional Volumes': appState.careProfessionalVolumes,
+                    'Operational staff Volumes': appState.operationalStaffVolumes,
+                    '1st Payroll Check Due Date': appState.firstPayrollDate,
+                    '1st Invoice Check Due Date': appState.firstInvoiceDate,
+                    '2nd Payroll Check Due Date': appState.secondPayrollDate,
+                    '2nd Invoice Check Due Date': appState.secondInvoiceDate,
+                };
+
+                this.state.points = allKickOffTitles.map(title => ({
+                    id: `p_${title.replace(/[\s/()]+/g, '')}`,
+                    title: title,
+                    value: valueMap[title] || ''
+                }));
+            },
+            render() { const agendaList = document.getElementById('agenda-list'); if (!agendaList) return; agendaList.innerHTML = ''; kickOffGroups.forEach((group, index) => { group.forEach(title => { const point = this.state.points.find(p => p.title === title); if(point) { const pointEl = document.createElement('div'); pointEl.id = point.id; pointEl.className = 'flex items-center'; pointEl.innerHTML = this.createPointHTML(point); agendaList.appendChild(pointEl); } }); if (index < kickOffGroups.length - 1) { const separatorEl = document.createElement('div'); separatorEl.className = 'flex items-center text-center py-4'; separatorEl.innerHTML = `<hr class="flex-1 border-gray-300/50"><div class="w-2 h-2 mx-2 bg-gray-300/50 transform rotate-45"></div><hr class="flex-1 border-gray-300/50">`; agendaList.appendChild(separatorEl); } }); },
+            createPointHTML(point) {
+                const isDateField = point.title.toLowerCase().includes('date');
+                let value = point.value;
+                if (point.title === 'Branch') value = appState.projectName;
+                if (point.title === 'OpCo') value = appState.opCoName;
+                if (point.title === 'Go Live Date') value = appState.goLiveDate;
+
+                let inputElement = '';
+                if (isDateField) {
+                    inputElement = `<input type="date" onchange="agendaApp.updatePointValue('${point.id}', this.value)" value="${value}" class="form-input w-full sm:text-sm bg-transparent border-0 focus:ring-0">`;
+                } else {
+                    inputElement = `<textarea onchange="agendaApp.updatePointValue('${point.id}', this.value)" oninput="this.style.height = 'auto'; this.style.height = (this.scrollHeight) + 'px';" class="form-input w-full sm:text-sm bg-transparent border-0 focus:ring-0" style="resize: none; overflow-y: hidden;">${value}</textarea>`;
+                }
+                
+                return `<div class="flex-1">
+                            <label class="sr-only">${point.title}</label>
+                            <div class="flex items-center rounded-md shadow-sm bg-gray-50/70 border border-gray-300/50">
+                                <span class="flex-1 flex items-center justify-end px-3 py-2 text-gray-700 sm:text-sm font-medium whitespace-nowrap">${point.title}</span>
+                                <div class="flex-shrink-0 self-stretch flex items-center px-2">
+                                    <div class="w-px h-full bg-gray-400"></div>
+                                </div>
+                                <div class="flex-[2] flex items-center p-2">
+                                    ${inputElement}
+                                </div>
+                            </div>
+                        </div>`;
+            },
+            updatePointValue(pointId, value) {
+                const point = this.state.points.find(p => p.id === pointId);
+                if(point) {
+                    point.value = value;
+                    switch(point.title) {
+                        case 'Branch': appState.projectName = value.trim() || 'Untitled'; break;
+                        case 'OpCo': appState.opCoName = value.trim() || 'Untitled'; break;
+                        case 'Go Live Date': appState.goLiveDate = value; break;
+                        case 'Implementation Duration (weeks)': appState.implementationDuration = value; break;
+                        case 'Volume of Hours': appState.volumeOfHours = value; break;
+                        case 'Service User (SS) Volumes': appState.ssUserVolumes = value; break;
+                        case 'Service User (Private) Volumes': appState.privateUserVolumes = value; break;
+                        case 'Care Professional Volumes': appState.careProfessionalVolumes = value; break;
+                        case 'Operational staff Volumes': appState.operationalStaffVolumes = value; break;
+                        case '1st Payroll Check Due Date': appState.firstPayrollDate = value; break;
+                        case '1st Invoice Check Due Date': appState.firstInvoiceDate = value; break;
+                        case '2nd Payroll Check Due Date': appState.secondPayrollDate = value; break;
+                        case '2nd Invoice Check Due Date': appState.secondInvoiceDate = value; break;
+                    }
+                }
+            }
+        };
+
+        // =================================================================================
+        // UPDATE CALL APP LOGIC
+        // =================================================================================
+        const updateCallAgenda = [
+            { agenda: 'Contract Summary', actions: ['Confirmation of Hours', 'Taxonomy'] },
+            { agenda: 'System Set Up', actions: ['MINT Request', 'System Access'] },
+            { agenda: 'Migration/Service Delivery', actions: ['Care Professional Migration', 'Service User Migration'] },
+            { agenda: 'Finance Setup', actions: ['Commercial Overview'] },
+            { agenda: 'Quality', actions: [] }, { agenda: 'Rates', actions: [] }, { agenda: 'TUPE Info', actions: [] },
+            { agenda: 'Systems / Phone Training', actions: [] }, { agenda: 'Recruitment', actions: [] },
+            { agenda: 'Estates', actions: [] }, { agenda: 'IT Estates', actions: [] }, { agenda: 'AOB', actions: [] }
+        ];
+
+        const updateCallApp = {
+            state: { rows: [] },
+            init() {
+                this.state.rows = [];
+                let idCounter = 1;
+                updateCallAgenda.forEach(item => {
+                    if (item.actions.length > 0) {
+                        item.actions.forEach(action => {
+                            this.state.rows.push({ id: idCounter++, agenda: item.agenda, action: action, assignee: '', deadline: '', status: '', conclusion: '' });
+                        });
+                    } else {
+                         this.state.rows.push({ id: idCounter++, agenda: item.agenda, action: '', assignee: '', deadline: '', status: '', conclusion: '' });
+                    }
+                });
+            },
+            render() {
+                const mainContent = document.getElementById('update-call-main');
+                if (!mainContent) return;
+                mainContent.innerHTML = `<section class="glass-card p-6"><div class="overflow-x-auto">${this.createTableHTML()}</div></section>`;
+            },
+            getRagCss(status) { switch (status) { case 'Completed': return 'bg-green-500 rag-glow-green'; case 'On Track': return 'bg-amber-500 rag-glow-amber'; case 'Off Track': return 'bg-red-500 rag-glow-red'; default: return 'bg-gray-400'; } },
+            createTableHTML() {
+                let currentAgenda = "";
+                const rowsHtml = this.state.rows.map(row => {
+                    let agendaCell = ``;
+                    if (row.agenda !== currentAgenda) {
+                        const rowSpan = this.state.rows.filter(r => r.agenda === row.agenda).length;
+                        agendaCell = `<td class="p-3 border-b border-r border-gray-300/50 font-semibold text-slate-700 align-top" rowspan="${rowSpan}">${row.agenda}</td>`;
+                        currentAgenda = row.agenda;
+                    }
+                    return `<tr class="hover:bg-white/20">${agendaCell}<td class="p-1 border-b border-gray-300/50"><input type="text" value="${row.action}" onchange="updateCallApp.updateRow(${row.id}, 'action', this.value)" class="w-full p-2 bg-transparent border-none focus:ring-0 form-input"></td><td class="p-1 border-b border-gray-300/50"><input type="text" value="${row.assignee}" onchange="updateCallApp.updateRow(${row.id}, 'assignee', this.value)" class="w-full p-2 bg-transparent border-none focus:ring-0 form-input"></td><td class="p-1 border-b border-gray-300/50"><input type="date" value="${row.deadline}" onchange="updateCallApp.updateRow(${row.id}, 'deadline', this.value)" class="w-full p-2 bg-transparent border-none focus:ring-0 form-input"></td><td class="p-1 border-b border-gray-300/50"><div class="flex items-center space-x-2"><span class="h-4 w-4 rounded-full inline-block ${this.getRagCss(row.status)}"></span><select onchange="updateCallApp.updateRow(${row.id}, 'status', this.value); this.previousElementSibling.className = 'h-4 w-4 rounded-full inline-block ' + updateCallApp.getRagCss(this.value);" class="w-full p-2 bg-transparent border-none focus:ring-0 appearance-none form-input"><option value="" ${row.status === '' ? 'selected' : ''}>Select...</option><option value="On Track" ${row.status === 'On Track' ? 'selected' : ''}>On Track</option><option value="Off Track" ${row.status === 'Off Track' ? 'selected' : ''}>Off Track</option><option value="Completed" ${row.status === 'Completed' ? 'selected' : ''}>Completed</option></select></div></td><td class="p-1 border-b border-gray-300/50"><div onclick="openUpdateCallNotesModal(${row.id})" class="p-2 cursor-pointer truncate hover:underline">${row.conclusion || 'Click to add...'}</div></td></tr>`;
+                }).join('');
+
+                return `<table class="min-w-full text-sm border-collapse border border-gray-300/50"><thead class="bg-transparent"><tr class="text-left text-xs font-medium text-gray-500 uppercase tracking-wider"><th class="p-3 w-1/6 border-b border-r border-gray-300/50">Agenda Item</th><th class="p-3 w-1/6 border-b border-r border-gray-300/50">Actions</th><th class="p-3 w-1/6 border-b border-r border-gray-300/50">Assignee</th><th class="p-3 w-1/6 border-b border-r border-gray-300/50">Deadline</th><th class="p-3 w-1/6 border-b border-r border-gray-300/50">Status</th><th class="p-3 w-1/6 border-b border-r border-gray-300/50">Discussion/Conclusion</th></tr></thead><tbody class="divide-y divide-gray-200/50">${rowsHtml}</tbody></table>`;
+            },
+            updateRow(id, key, value) { const rowIndex = this.state.rows.findIndex(r => r.id === id); if (rowIndex > -1) { this.state.rows[rowIndex][key] = value; this.render(); } }
+        };
+
+        // =================================================================================
+        // MODAL & UTILITY LOGIC (GLOBAL)
+        // =================================================================================
+        const modalContainer = document.getElementById('modal-container');
+        function openModal(innerHtml) { modalContainer.innerHTML = `<div class="fixed inset-0 modal-overlay flex items-center justify-center z-50 p-4">${innerHtml}</div>`; }
+        function closeModal() { modalContainer.innerHTML = ''; }
+        
+        function openNotesModal(taskId) {
+            const task = checklistApp.getCurrentState().tasks.find(t => t.id === taskId);
+            if (!task) return;
+
+            const modalHtml = `
+                <div class="glass-card p-8 rounded-lg w-full max-w-lg" onclick="event.stopPropagation()">
+                    <h3 class="text-2xl font-bold text-slate-800 mb-2">Edit Note</h3>
+                    <p class="text-sm text-gray-600 mb-4">Task: ${task.description}</p>
+                    <textarea id="notes-textarea" class="w-full h-64 p-3 mt-1 block rounded-md shadow-sm form-input bg-transparent border border-gray-300/70" style="resize: vertical;">${task.notes}</textarea>
+                    <div class="flex justify-end mt-6">
+                        <button type="button" onclick="closeNotesModal('${taskId}')" class="font-bold py-2 px-5 rounded-lg shadow-md text-white transition-opacity hover:opacity-90" style="background-color: var(--primary-color)">Save & Close</button>
+                    </div>
+                </div>`;
+            openModal(`<div class="fixed inset-0 modal-overlay flex items-center justify-center z-50 p-4" onclick="closeNotesModal('${taskId}')">` + modalHtml + `</div>`);
+            document.getElementById('notes-textarea').focus();
+        }
+
+        function closeNotesModal(taskId) {
+            const newNotes = document.getElementById('notes-textarea').value;
+            checklistApp.updateTaskNotes(taskId, newNotes);
+            closeModal();
+            checklistApp.render();
+        }
+
+        function openFilterModal(sectionId) {
+            const state = checklistApp.getCurrentState();
+            const tasksInSection = state.tasks.filter(t => t.sectionId === sectionId);
+            const responsibleList = [...new Set(tasksInSection.map(t => t.responsible))];
+
+            if (responsibleList.length === 0) {
+                const modalHtml = `<div class="glass-card p-8 rounded-lg w-full max-w-sm text-center" onclick="event.stopPropagation()"><i class="fas fa-info-circle text-4xl text-blue-500 mb-4"></i><h3 class="text-xl font-bold text-slate-800 mb-2">No Filters Available</h3><p class="text-gray-600 mb-6">There are no responsible parties assigned to tasks in this section yet.</p><div class="flex justify-center"><button onclick="closeModal()" class="font-bold py-2 px-6 rounded-lg bg-gray-200/50 hover:bg-gray-300/50">OK</button></div></div>`;
+                 openModal(`<div class="fixed inset-0 modal-overlay flex items-center justify-center z-50 p-4" onclick="closeModal()">` + modalHtml + `</div>`);
+                return;
+            }
+
+            let listItems = responsibleList.map(name => 
+                `<li class="border-b border-gray-200/50"><a href="#" onclick="checklistApp.applyFilter('${sectionId}', '${name}'); return false;" class="block p-3 hover:bg-gray-200/50 rounded-md">${name}</a></li>`
+            ).join('');
+
+            const modalHtml = `
+                <div class="glass-card p-8 rounded-lg w-full max-w-md" onclick="event.stopPropagation()">
+                    <h3 class="text-2xl font-bold text-slate-800 mb-4">Filter by Responsible</h3>
+                    <ul class="space-y-1">${listItems}</ul>
+                    <div class="flex justify-end space-x-4 mt-6">
+                        <button type="button" onclick="checklistApp.applyFilter('${sectionId}', null)" class="font-bold py-2 px-4 rounded-lg hover:bg-gray-200/50">Clear Filter</button>
+                        <button type="button" onclick="closeModal()" class="font-bold py-2 px-4 rounded-lg bg-gray-200/50">Cancel</button>
+                    </div>
+                </div>
+            `;
+            openModal(`<div class="fixed inset-0 modal-overlay flex items-center justify-center z-50 p-4" onclick="closeModal()">` + modalHtml + `</div>`);
+        }
+
+        function openUpdateCallNotesModal(rowId) {
+            const row = updateCallApp.state.rows.find(r => r.id === rowId);
+            if (!row) return;
+
+            const modalHtml = `
+                <div class="glass-card p-8 rounded-lg w-full max-w-lg" onclick="event.stopPropagation()">
+                    <h3 class="text-2xl font-bold text-slate-800 mb-2">Edit Discussion/Conclusion</h3>
+                    <p class="text-sm text-gray-600 mb-4">For: ${row.action || row.agenda}</p>
+                    <textarea id="update-call-notes-textarea" class="w-full h-64 p-3 mt-1 block rounded-md shadow-sm form-input bg-transparent border border-gray-300/70" style="resize: vertical;">${row.conclusion}</textarea>
+                    <div class="flex justify-end mt-6">
+                        <button type="button" onclick="closeUpdateCallNotesModal(${rowId})" class="font-bold py-2 px-5 rounded-lg shadow-md text-white transition-opacity hover:opacity-90" style="background-color: var(--primary-color)">Save & Close</button>
+                    </div>
+                </div>`;
+            openModal(`<div class="fixed inset-0 modal-overlay flex items-center justify-center z-50 p-4" onclick="closeUpdateCallNotesModal(${rowId})">` + modalHtml + `</div>`);
+            document.getElementById('update-call-notes-textarea').focus();
+        }
+
+        function closeUpdateCallNotesModal(rowId) {
+            const newConclusion = document.getElementById('update-call-notes-textarea').value;
+            updateCallApp.updateRow(rowId, 'conclusion', newConclusion); 
+            closeModal();
+        }
+
+        function openGlobalAddTaskModal() {
+            const state = checklistApp.getCurrentState();
+            const sectionOpts = state.sections.map(s => `<option value="${s.id}">${s.title}</option>`).join('');
+            const responsibleOpts = checklistApp.responsibleTitles.map(t => `<option value="${t}">${t}</option>`).join('');
+            const modalHtml = `
+                <div class="fixed inset-0 modal-overlay flex items-center justify-center z-50 p-4" onclick="closeModal()">
+                    <form id="add-task-form" class="glass-card p-8 rounded-lg w-full max-w-md" onclick="event.stopPropagation()">
+                        <h3 class="text-2xl font-bold text-slate-800 mb-4">Add New Task</h3>
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700">Section</label>
+                            <select name="sectionId" class="mt-1 block w-full rounded-md shadow-sm form-input bg-transparent border-gray-300/70" required>
+                                <option value="" disabled selected>Select a section...</option>
+                                ${sectionOpts}
+                            </select>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700">Description</label>
+                            <input type="text" name="description" class="mt-1 block w-full rounded-md shadow-sm form-input bg-transparent border-gray-300/70" required />
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700">Responsible</label>
+                            <select name="responsible" class="mt-1 block w-full rounded-md shadow-sm form-input bg-transparent border-gray-300/70" required>
+                                <option value="" disabled selected>Select a title...</option>
+                                ${responsibleOpts}
+                            </select>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700">Due Date</label>
+                            <input type="date" name="dueDate" value="${today}" class="mt-1 block w-full rounded-md shadow-sm form-input bg-transparent border-gray-300/70" required />
+                        </div>
+                        <div class="flex justify-end space-x-4 mt-6">
+                            <button type="button" onclick="closeModal()" class="font-bold py-2 px-4 rounded-lg hover:bg-gray-200/50">Cancel</button>
+                            <button type="submit" class="font-bold py-2 px-5 rounded-lg shadow-md text-white" style="background-color: var(--primary-color)">Add Task</button>
+                        </div>
+                    </form>
+                </div>`;
+            openModal(modalHtml);
+            document.getElementById('add-task-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                const sectionId = formData.get('sectionId');
+                checklistApp.addTask(sectionId, formData);
+                closeModal();
+            });
+        }
+        
+        function openConfirmModal(action, id, itemName) { const deleteFunctions = { deleteTask: () => checklistApp.deleteTask(id), deleteSection: () => checklistApp.deleteSection(id) }; openModal(`<div class="fixed inset-0 modal-overlay flex items-center justify-center z-50 p-4" onclick="closeModal()"><div class="glass-card p-8 rounded-lg w-full max-w-sm text-center" onclick="event.stopPropagation()"><i class="fas fa-exclamation-triangle text-4xl text-red-500 mb-4"></i><h3 class="text-xl font-bold text-slate-800 mb-2">Are you sure?</h3><p class="text-gray-600 mb-6">Do you really want to delete ${itemName}? This action cannot be undone.</p><div class="flex justify-center space-x-4"><button onclick="closeModal()" class="font-bold py-2 px-6 rounded-lg hover:bg-gray-200/50">Cancel</button><button id="confirm-delete-btn" class="font-bold py-2 px-6 rounded-lg bg-red-500 text-white hover:bg-red-600">Delete</button></div></div></div>`); document.getElementById('confirm-delete-btn').onclick = () => { if (deleteFunctions[action]) { deleteFunctions[action](); } closeModal(); }; }
+
+        function showToast(message) {
+            const toastContainer = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.innerHTML = `<i class="fas fa-check-circle text-green-300"></i><span>${message}</span>`;
+            toastContainer.appendChild(toast);
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
+
+        async function copyUpdateCallTable() {
+            const headers = ['Agenda Item', 'Actions', 'Assignee', 'Deadline', 'Status', 'Discussion/Conclusion'];
+            
+            // Build HTML string
+            let htmlRows = updateCallApp.state.rows.map(row => {
+                return `<tr>
+                          <td style="border: 1px solid #ddd; padding: 8px;">${sanitizeForHtml(row.agenda)}</td>
+                          <td style="border: 1px solid #ddd; padding: 8px;">${sanitizeForHtml(row.action)}</td>
+                          <td style="border: 1px solid #ddd; padding: 8px;">${sanitizeForHtml(row.assignee)}</td>
+                          <td style="border: 1px solid #ddd; padding: 8px;">${sanitizeForHtml(formatDateToUK(row.deadline))}</td>
+                          <td style="border: 1px solid #ddd; padding: 8px;">${sanitizeForHtml(row.status)}</td>
+                          <td style="border: 1px solid #ddd; padding: 8px;">${sanitizeForHtml(row.conclusion)}</td>
+                        </tr>`;
+            }).join('');
+
+            const htmlString = `
+                <table style="border-collapse: collapse; width: 100%; font-family: sans-serif; border: 1px solid #ddd;">
+                    <thead style="background-color: #f2f2f2;">
+                        <tr>
+                            ${headers.map(h => `<th style="border: 1px solid #ddd; padding: 8px; text-align: left;">${h}</th>`).join('')}
+                        </tr>
+                    </thead>
+                    <tbody>${htmlRows}</tbody>
+                </table>`;
+            
+            // Build plain text fallback
+            let textString = headers.join('\t') + '\n';
+            updateCallApp.state.rows.forEach(row => {
+                const rowData = [row.agenda, row.action, row.assignee, formatDateToUK(row.deadline), row.status, row.conclusion.replace(/\n/g, ' ')];
+                textString += rowData.join('\t') + '\n';
+            });
+            
+            try {
+                const blobHtml = new Blob([htmlString], { type: 'text/html' });
+                const blobText = new Blob([textString], { type: 'text/plain' });
+                const clipboardItem = new ClipboardItem({
+                    'text/html': blobHtml,
+                    'text/plain': blobText
+                });
+
+                await navigator.clipboard.write([clipboardItem]);
+                showToast('Table copied to clipboard!');
+            } catch (err) {
+                console.error('Failed to copy using modern API: ', err);
+                showToast('Failed to copy. Please use a modern browser.');
+            }
+        }
+
+        // =================================================================================
+        // INITIALIZATION
+        // =================================================================================
+        document.addEventListener('DOMContentLoaded', () => {
+            showPage('dashboard');
+        });
+
+    </script>
+</body>
+</html>
